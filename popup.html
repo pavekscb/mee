@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"> 
+    
+    <style>
+        /* ИСПРАВЛЕНИЕ: Увеличение размера окна до 400px (для размещения новой секции) */
+        body {
+            width: 400px; 
+            min-height: 250px; 
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            margin: 0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Общие стили для кнопок */
+        button {
+            cursor: pointer;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        
+        /* Стиль для секций */
+        .section {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+
+        /* Дополнительный стиль для кнопок-счетчиков, которые должны растягиваться */
+        #editWalletBtn {
+            width: 100%;
+        }
+
+        /* Стиль для нового заголовка */
+        .title-header {
+            text-align: center;
+            color: #1E90FF; /* Яркий синий цвет */
+            margin: 0 0 15px 0;
+            padding: 5px 0 10px 0;
+            border-bottom: 2px solid #ddd; /* Светлая линия под заголовком */
+            font-size: 1.6em;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+        }
+
+        /* Стили для модальных окон (для переиспользования кода) */
+        #modalOverlay, #harvestModal, #stakeModal, #unstakeModal {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0, 0, 0, 0.7); 
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+        }
+
+        /* СТИЛЬ: для кнопок-ссылок */
+        .link-button {
+            background-color: #fffacd; /* Светло-желтый (LemonChiffon) */
+            color: #333;
+            border: 1px solid #ffcc00;
+            padding: 5px 10px;
+            font-size: 0.9em;
+            font-weight: bold;
+            flex-grow: 1; 
+            min-width: 100px; 
+        }
+    </style>
+</head>
+<body>
+    
+    <h1 class="title-header">МАЙНИНГ $MEE (НА APTOS)</h1>
+    
+    <div id="mainContent">
+        
+        <div class="section">
+            <p id="walletAddressDisplay" style="margin: 0; font-size: 1.1em;">Кошелек: Загрузка...</p>
+            <button id="editWalletBtn">Сменить кошелек</button>
+        </div>
+        
+        <div class="section" style="background-color: #e6f7ff; border-color: #8ac0e6; display: flex; align-items: center; justify-content: space-between;">
+            <div style="flex-grow: 1;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Баланс $MEE:</label>
+                <span id="meeBalance" style="font-size: 1.1em;">0,00000000 $MEE</span>
+            </div>
+            <button id="addMeeBtn" style="background-color: #1E90FF; color: white; width: 120px; margin: 0; flex-shrink: 0;">Добавить $MEE</button>
+        </div>
+        
+        <div class="section" style="background-color: #e6ffe6; border-color: #00cc00; display: flex; align-items: center; justify-content: space-between;">
+            <div style="flex-grow: 1;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Награда (harvest):</label>
+                <span id="meeReward" style="font-weight: bold; color: green; font-size: 1.2em;">0,00000000 $MEE</span>
+            </div>
+            <button id="harvestBtn" style="background-color: #4CAF50; color: white; width: 120px; margin: 0; flex-shrink: 0;">Забрать награду</button>
+        </div>
+        
+        <div class="section" style="background-color: #ffe6e6; border-color: #ff9999; display: flex; align-items: center; justify-content: space-between;">
+            <div style="flex-grow: 1;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Вывод $MEE из стейкинга:</label>
+            </div>
+            <button id="unstakeBtn" style="background-color: #DC143C; color: white; width: 120px; margin: 0; flex-shrink: 0;">Забрать $MEE</button>
+        </div>
+        
+        <div class="section">
+            <label style="font-size: 0.8em; color: #888; display: block;">Контракт $MEE:</label>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span id="meeContractValue" style="font-size: 0.8em; word-break: break-all;"></span>
+                <button id="copyContractBtn" style="width: auto; padding: 5px 10px; font-size: 0.8em; margin: 0;">Копировать</button>
+            </div>
+        </div>
+
+        <div class="section" style="margin-top: 5px; padding: 5px; border: none;">
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+                <button id="linkSourceBtn" class="link-button">Исходный код</button>
+                <button id="linkSiteBtn" class="link-button">Сайт</button>
+                <button id="linkGraphBtn" class="link-button">График $MEE</button>
+                <button id="linkSwapBtn" class="link-button">Обмен $MEE/$APT</button>
+                <button id="linkSupportBtn" class="link-button">Поддержка</button>
+            </div>
+        </div>
+        </div>
+    
+    <div id="modalOverlay" style="z-index: 1000;">
+        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 80%;">
+            <h4>Введите новый адрес кошелька</h4>
+            <input type="text" id="newWalletInput" style="width: 90%; padding: 8px; margin-bottom: 10px;">
+            <button id="saveNewWalletBtn">Сохранить</button>
+            <button id="cancelNewWalletBtn" style="background-color: #ccc;">Отмена</button>
+        </div>
+    </div>
+    
+    <div id="harvestModal" style="z-index: 1001;">
+        <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 350px; text-align: left;">
+            <h3 style="color: #4CAF50; margin-top: 0;">✅ Контракт скопирован! Открывается страница Harvest.</h3>
+            
+            <p style="font-size: 1.1em; font-weight: bold; color: #1E90FF; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+                1. Подключите кошелек.
+            </p>
+            
+            <p style="margin-top: 15px;">
+                2. Вставьте <span style="font-weight: bold; color: orange;">контракт $MEE</span> (он уже в буфере обмена) в поля **T0** и **T1**.
+            </p>
+            
+            <p style="margin-top: 15px;">
+                3. Нажмите <span style="background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; font-family: monospace; color: #333;">RUN</span> и подпишите транзакцию.
+            </p>
+            
+            <p style="font-weight: bold; color: #4CAF50; margin-top: 25px; font-size: 1.2em;">
+                🎉 Всё! Вы получили награду $MEE!
+            </p>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="proceedHarvestModalBtn" style="flex-grow: 1; padding: 10px; background-color: #1E90FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                    Перейти к Harvest
+                </button>
+                <button id="cancelHarvestModalBtn" style="flex-grow: 1; padding: 10px; background-color: #ccc; color: black; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="stakeModal" style="z-index: 1002;">
+        <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 380px; text-align: left;">
+            <h3 style="color: #4CAF50; margin-top: 0;">✅ Контракт скопирован! Открывается страница Stake.</h3>
+            
+            <p style="font-size: 1.1em; font-weight: bold; color: #1E90FF; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+                1. Подключите кошелек.
+            </p>
+            
+            <p style="margin-top: 15px;">
+                2. Вставьте <span style="font-weight: bold; color: orange;">контракт $MEE</span> в поля **T0** и **T1**.
+            </p>
+            
+            <p style="margin-top: 15px;">
+                3. В поле <span style="font-weight: bold; color: #DC143C;">"arg0: u64"</span> введите сумму $MEE для внесения, используя формат **без десятичных знаков**.
+                <br>
+                <span style="font-size: 0.9em; color: #696969;">
+                    Например: 1 $MEE = 1000000, то есть +6 нулей. 
+                </span>
+            </p>
+            
+            <p style="margin-top: 15px;">
+                4. Нажмите <span style="background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; font-family: monospace; color: #333;">RUN</span> и подпишите транзакцию.
+            </p>
+            
+            <p style="font-weight: bold; color: #4CAF50; margin-top: 25px; font-size: 1.2em;">
+                🚀 Всё! Вы внесли $MEE в стейкинг!
+            </p>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="proceedStakeModalBtn" style="flex-grow: 1; padding: 10px; background-color: #1E90FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                    Перейти к Stake
+                </button>
+                <button id="cancelStakeModalBtn" style="flex-grow: 1; padding: 10px; background-color: #ccc; color: black; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="unstakeModal" style="z-index: 1003;">
+        <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 400px; text-align: left;">
+            <h3 style="color: #DC143C; margin-top: 0;">⚠️ Готовы забрать $MEE из стейкинга?</h3>
+            
+            <p style="font-size: 1.1em; font-weight: bold; color: #1E90FF; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+                1. Контракт скопирован! Подключите кошелек.
+            </p>
+            
+            <p style="margin-top: 15px;">
+                2. Вставьте <span style="font-weight: bold; color: orange;">контракт $MEE</span> в поля **T0** и **T1**.
+            </p>
+            
+            <p style="margin-top: 15px;">
+                3. В поле <span style="font-weight: bold; color: #DC143C;">"arg0: u64"</span> введите сумму $MEE, которую хотите забрать (с +6 нулями).
+                <br>
+                <span style="font-size: 0.9em; color: #696969;">
+                    Например: 1 $MEE = 1000000, то есть +6 нулей.
+                </span>
+            </p>
+            
+            <p style="margin-top: 15px;">
+                4. В поле <span style="font-weight: bold; color: #DC143C;">"arg1: u8"</span> введите тип вывода:
+                <ul style="margin: 5px 0 0 20px;">
+                    <li><span style="font-weight: bold; color: green;">0</span>: Обычный Unstake (15 дней разблокировки, затем `withdraw`).</li>
+                    <li><span style="font-weight: bold; color: red;">1</span>: Мгновенный Unstake (комиссия 15%).</li>
+                </ul>
+            </p>
+            
+            <p style="margin-top: 15px; font-weight: bold;">
+                5. Нажмите <span style="background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; font-family: monospace; color: #333;">RUN</span> и подпишите транзакцию.
+            </p>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="closeUnstakeModalBtn" style="flex-grow: 1; padding: 10px; background-color: #DC143C; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                    Перейти к Unstake
+                </button>
+                <button id="cancelUnstakeModalBtn" style="flex-grow: 1; padding: 10px; background-color: #ccc; color: black; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
