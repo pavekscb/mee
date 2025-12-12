@@ -13,10 +13,11 @@ const UNSTAKE_BASE_URL = "https://explorer.aptoslabs.com/account/0x514cfb77665f9
 const APTOS_LEDGER_URL = "https://fullnode.mainnet.aptoslabs.com/v1";
 
 // КОНСТАНТЫ: Ссылки для кнопок
-const URL_SOURCE = "https://github.com/pavekscb/mee"; // НОВАЯ ССЫЛКА
+const URL_SOURCE = "https://github.com/pavekscb/mee";
 const URL_SITE = "https://meeiro.xyz/staking";
 const URL_GRAPH = "https://dexscreener.com/aptos/pcs-167";
 const URL_SWAP = "https://aptos.pancakeswap.finance/swap?outputCurrency=0x1%3A%3Aaptos_coin%3A%3AAptosCoin&inputCurrency=0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9%3A%3Amee_coin%3A%3AMeeCoin";
+const URL_SWAP_EARNIUM = "https://app.earnium.io/swap?from=0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9%3A%3Amee_coin%3A%3AMeeCoin&to=0x1%3A%3Aaptos_coin%3A%3AAptosCoin";
 const URL_SUPPORT = "https://t.me/cripto_karta";
 
 let currentWalletAddress = DEFAULT_EXAMPLE_ADDRESS;
@@ -24,9 +25,12 @@ let meeCurrentReward = 0n;
 let meeRatePerSec = 0.0;
 let lastUpdateTime = 0;
 let meeAccumulatedFloatReward = 0.0;
+// НОВАЯ ПЕРЕМЕННАЯ для анимации
+const ANIMATION_FRAMES = ['🌱', '🌿', '💰']; 
+let currentFrameIndex = 0;
 
 // =======================================================
-// === 1. Функции для Aptos API (без изменений) ===
+// === 1-4. Функции API, расчетов и GUI (частично обновлено) ===
 // =======================================================
 
 function generateApiUrls(accountAddress) {
@@ -76,10 +80,6 @@ async function fetchLedgerTimestamp() {
 }
 
 
-// =======================================================
-// === 2. Функции расчетов (без изменений) ===
-// =======================================================
-
 function calculateRatePerSecond(stakeData, poolData) {
     const amount = BigInt(stakeData.amount) * RAW_DATA_CORRECTION_FACTOR; 
     if (amount === 0n) return 0.0;
@@ -93,9 +93,11 @@ function calculateRatePerSecond(stakeData, poolData) {
     if (poolTotalAmount <= 0n) return 0.0;
         
     const rateRaw = (Number(tokenPerSecond) * Number(amount)) / Number(poolTotalAmount);
+    // Делим на 10^8 для получения ставки MEE в секунду
     const rateMee = rateRaw / (10 ** TOKEN_DECIMALS); 
     
-    return rateMee * 100.0; 
+    // Возвращаем чистую ставку в MEE в секунду
+    return rateMee; 
 }
 
 
@@ -163,10 +165,6 @@ async function fetchAndCalculateRewards() {
 }
 
 
-// =======================================================
-// === 3. Функции для GUI и Chrome Storage (без изменений) ===
-// =======================================================
-
 function loadWalletAddress() {
     return new Promise((resolve) => {
         chrome.storage.local.get(['walletAddress'], (result) => {
@@ -196,7 +194,10 @@ function formatMeeValue(rawValue) {
     
     let fractionalStr = fractionalPart.toString().padStart(TOKEN_DECIMALS, '0');
     
-    return `${integerPart.toLocaleString('ru-RU')},${fractionalStr}`;
+    // Форматирование: разделитель тысяч (пробел) и запятая для десятичных
+    let formattedInteger = integerPart.toLocaleString('ru-RU').replace(/\s/g, ' '); 
+    
+    return `${formattedInteger},${fractionalStr}`;
 }
 
 function updateLabels(results) {
@@ -205,6 +206,8 @@ function updateLabels(results) {
     const walletLabel = document.getElementById('walletAddressDisplay');
     const balanceLabel = document.getElementById('meeBalance');
     const rewardLabel = document.getElementById('meeReward');
+    const rateLabel = document.getElementById('meeRateLabel'); // НОВАЯ МЕТКА
+    const tickerLabel = document.getElementById('rewardTicker'); // НОВАЯ МЕТКА
 
     const displayAddress = currentWalletAddress === DEFAULT_EXAMPLE_ADDRESS 
         ? `${currentWalletAddress.substring(0, 6)}...${currentWalletAddress.substring(currentWalletAddress.length - 4)} (ПРИМЕР)`
@@ -215,6 +218,8 @@ function updateLabels(results) {
     if (meeBalance === null || meeTotalRewardRaw === null) {
         balanceLabel.textContent = 'Ошибка! Проверьте адрес или сеть.';
         rewardLabel.textContent = 'Ошибка! Проверьте адрес или сеть.';
+        rateLabel.textContent = ''; // Очищаем скорость при ошибке
+        tickerLabel.textContent = '[ОШИБКА]'; // Очищаем тикер при ошибке
         balanceLabel.style.color = 'red';
         rewardLabel.style.color = 'red';
         return;
@@ -229,13 +234,19 @@ function updateLabels(results) {
     const balanceStr = meeBalance.toLocaleString('ru-RU', { 
         minimumFractionDigits: TOKEN_DECIMALS, 
         maximumFractionDigits: TOKEN_DECIMALS
-    });
+    }).replace(/\s/g, ' ').replace('.', ','); // Корректное русское форматирование
+    
     balanceLabel.textContent = balanceStr + ' $MEE';
     balanceLabel.style.color = 'black';
     
     rewardLabel.textContent = formatMeeValue(meeCurrentReward) + ' $MEE';
     rewardLabel.style.color = 'green';
     
+    // Обновление скорости и тикера
+    const formattedRate = meeRatePerSec.toFixed(8).replace('.', ',');
+    rateLabel.textContent = `Скорость: ${formattedRate} MEE/сек`;
+    tickerLabel.textContent = ANIMATION_FRAMES[currentFrameIndex];
+
     if (!window.simulationInterval) {
         startSimulation();
     }
@@ -244,15 +255,11 @@ function updateLabels(results) {
 }
 
 
-// =======================================================
-// === 4. Симуляция роста награды (без изменений) ===
-// =======================================================
-
 function startSimulation() {
     if (window.simulationInterval) return; 
 
     window.simulationInterval = setInterval(() => {
-        const rateMeePerSec = meeRatePerSec / 100;
+        const rateMeePerSec = meeRatePerSec;
         
         meeAccumulatedFloatReward += rateMeePerSec; 
 
@@ -267,6 +274,10 @@ function startSimulation() {
         
         const rewardLabel = document.getElementById('meeReward');
         rewardLabel.textContent = formatMeeValue(meeCurrentReward) + ' $MEE';
+
+        // Обновление тикера/анимации каждую секунду
+        currentFrameIndex = (currentFrameIndex + 1) % ANIMATION_FRAMES.length;
+        document.getElementById('rewardTicker').textContent = ANIMATION_FRAMES[currentFrameIndex];
         
     }, 1000); 
 }
@@ -291,7 +302,7 @@ function resetSimulationState() {
 
 
 // =======================================================
-// === 5. Функции обработчиков (С ИЗМЕНЕНИЯМИ) ===
+// === 5. Функции обработчиков (без изменений) ===
 // =======================================================
 
 function openEditWalletDialog() {
@@ -393,10 +404,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // ОБРАБОТЧИКИ: Кнопки-ссылки
-    document.getElementById('linkSourceBtn').addEventListener('click', () => openLink(URL_SOURCE)); // НОВЫЙ ОБРАБОТЧИК
+    document.getElementById('linkSourceBtn').addEventListener('click', () => openLink(URL_SOURCE));
     document.getElementById('linkSiteBtn').addEventListener('click', () => openLink(URL_SITE));
     document.getElementById('linkGraphBtn').addEventListener('click', () => openLink(URL_GRAPH));
     document.getElementById('linkSwapBtn').addEventListener('click', () => openLink(URL_SWAP));
+    document.getElementById('linkSwapEarniumBtn').addEventListener('click', () => openLink(URL_SWAP_EARNIUM));
     document.getElementById('linkSupportBtn').addEventListener('click', () => openLink(URL_SUPPORT));
 
 
