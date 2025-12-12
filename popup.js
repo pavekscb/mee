@@ -1,6 +1,8 @@
 // --- КОНСТАНТЫ ---
 const DEFAULT_EXAMPLE_ADDRESS = "0x9ba27fc8a65ba4507fc4cca1b456e119e4730b8d8cfaf72a2a486e6d0825b27b";
-const MEE_COIN_T0_T1 = "0xe9c192ff55cffab3963c695cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin";
+// ИСПРАВЛЕНИЕ: УДАЛЕН ПОВТОР в адресе. Теперь адрес токена правильный.
+const MEE_COIN_T0_T1 = "0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin";
+
 const UPDATE_INTERVAL_SECONDS = 60;
 const TOKEN_DECIMALS = 8; // Точность для отображения баланса и награды (8 знаков)
 const RAW_DATA_CORRECTION_FACTOR = 100n; // Коэффициент для коррекции скейлинга данных из API (10^6 -> 10^8)
@@ -31,7 +33,7 @@ const ANIMATION_FRAMES = ['🌱', '🌿', '💰'];
 let currentFrameIndex = 0;
 
 // =======================================================
-// === 1. Функция расчета ставки (ИСПРАВЛЕНО) ===
+// === 1. Функция расчета ставки (Скорректирована точность) ===
 // =======================================================
 
 function calculateRatePerSecond(stakeData, poolData) {
@@ -45,16 +47,14 @@ function calculateRatePerSecond(stakeData, poolData) {
     
     if (poolTotalAmount <= 0n) return 0.0;
         
-    // НОВОЕ: Используем 10^18 для высокой точности BigInt деления (10^18)
+    // Используем 10^18 для высокой точности BigInt деления
     const RATE_PRECISION = 10n ** 18n; 
     
     // 1. Расчет Raw Reward per Second, масштабированный на 10^18
-    // (tokenPerSecond * amount / poolTotalAmount) * 10^18 
     const numeratorForRate = tokenPerSecond * amount * RATE_PRECISION;
     const rateRawBigInt = numeratorForRate / poolTotalAmount; 
     
-    // 2. Преобразуем BigInt в float и делим на RATE_PRECISION, чтобы получить 
-    // Raw Reward per Second (без масштабирования)
+    // 2. Преобразуем BigInt в float и делим на RATE_PRECISION
     const rateFloatRaw = Number(rateRawBigInt) / Number(RATE_PRECISION);
     
     // 3. Конвертируем Raw Reward (10^-8 MEE) в MEE/сек (делим на 10^8)
@@ -64,7 +64,7 @@ function calculateRatePerSecond(stakeData, poolData) {
 }
 
 // =======================================================
-// === 2. Остальные функции (без изменений, кроме API) ===
+// === 2. Остальные функции API и расчетов ===
 // =======================================================
 
 function generateApiUrls(accountAddress) {
@@ -72,11 +72,13 @@ function generateApiUrls(accountAddress) {
         return null; 
     }
     
-    const STAKE_RESOURCE_TYPE = "0x514cfb77665f99a2e4c65a5614039c66d13e00e98daf4c86305651d29fd953e5::Staking::StakeInfo<0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin,0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin>";
+    // ВНИМАНИЕ: Здесь также должен использоваться правильный адрес токена MEE_COIN
+    // В этой константе MEE_COIN_T0_T1 используется как тип ресурса
+    const STAKE_RESOURCE_TYPE = `0x514cfb77665f99a2e4c65a5614039c66d13e00e98daf4c86305651d29fd953e5::Staking::StakeInfo<${MEE_COIN_T0_T1},${MEE_COIN_T0_T1}>`;
     const STAKE_API_URL = `${APTOS_LEDGER_URL}/accounts/${accountAddress}/resource/${encodeURIComponent(STAKE_RESOURCE_TYPE)}`;
 
     const POOL_ADDRESS = "0x482b8d35e320cca4f2d49745a1f702d052aa0366ac88e375c739dc479e81bc98";
-    const POOL_RESOURCE_TYPE = "0x514cfb77665f99a2e4c65a5614039c66d13e00e98daf4c86305651d29fd953e5::Staking::PoolInfo<0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin,0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin>";
+    const POOL_RESOURCE_TYPE = `0x514cfb77665f99a2e4c65a5614039c66d13e00e98daf4c86305651d29fd953e5::Staking::PoolInfo<${MEE_COIN_T0_T1},${MEE_COIN_T0_T1}>`;
     const POOL_API_URL = `${APTOS_LEDGER_URL}/accounts/${POOL_ADDRESS}/resource/${encodeURIComponent(POOL_RESOURCE_TYPE)}`;
 
     return { stakeUrl: STAKE_API_URL, poolUrl: POOL_API_URL };
@@ -213,7 +215,7 @@ function formatMeeValue(rawValue) {
 }
 
 // =======================================================
-// === 3. Функция обновления меток (ИСПРАВЛЕНО) ===
+// === 3. Функция обновления меток (Скорректирована точность отображения) ===
 // =======================================================
 
 function updateLabels(results) {
@@ -258,7 +260,7 @@ function updateLabels(results) {
     rewardLabel.textContent = formatMeeValue(meeCurrentReward) + ' $MEE';
     rewardLabel.style.color = 'green';
     
-    // ИСПРАВЛЕНИЕ: Увеличиваем точность отображения ставки до 12 знаков
+    // Отображаем ставку с точностью до 12 знаков
     const formattedRate = meeRatePerSec.toFixed(12).replace('.', ','); 
     rateLabel.textContent = `Скорость: ${formattedRate} MEE/сек`;
     tickerLabel.textContent = ANIMATION_FRAMES[currentFrameIndex];
