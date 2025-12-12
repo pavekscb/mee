@@ -1,12 +1,13 @@
 // --- КОНСТАНТЫ ---
 const DEFAULT_EXAMPLE_ADDRESS = "0x9ba27fc8a65ba4507fc4cca1b456e119e4730b8d8cfaf72a2a486e6d0825b27b";
-const MEE_COIN_T0_T1 = "0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin";
+const MEE_COIN_T0_T1 = "0xe9c192ff55cffab3963c695cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin";
 const UPDATE_INTERVAL_SECONDS = 60;
-const TOKEN_DECIMALS = 8; // Единая точность для расчетов и отображения (8 знаков)
+const TOKEN_DECIMALS = 8; // Точность для отображения баланса и награды (8 знаков)
 const RAW_DATA_CORRECTION_FACTOR = 100n; // Коэффициент для коррекции скейлинга данных из API (10^6 -> 10^8)
-const ACC_PRECISION = 100000000000n; // 10^11
+const ACC_PRECISION = 100000000000n; // 10^11 (для расчета награды)
 const RAW_UNIT = 1n; // Минимальная единица BigInt (10^-8 MEE)
 const MEE_PER_RAW_UNIT = 1 / (10 ** TOKEN_DECIMALS); // 10^-8 MEE (Минимальное значение для float)
+
 const HARVEST_BASE_URL = "https://explorer.aptoslabs.com/account/0x514cfb77665f99a2e4c65a5614039c66d13e00e98daf4c86305651d29fd953e5/modules/run/Staking/harvest?network=mainnet";
 const ADD_MEE_URL = "https://explorer.aptoslabs.com/account/0x514cfb77665f99a2e4c65a5614039c66d13e00e98daf4c86305651d29fd953e5/modules/run/Staking/stake?network=mainnet";
 const UNSTAKE_BASE_URL = "https://explorer.aptoslabs.com/account/0x514cfb77665f99a2e4c65a5614039c66d13e00e98daf4c86305651d29fd953e5/modules/run/Staking/unstake?network=mainnet";
@@ -25,12 +26,45 @@ let meeCurrentReward = 0n;
 let meeRatePerSec = 0.0;
 let lastUpdateTime = 0;
 let meeAccumulatedFloatReward = 0.0;
-// НОВАЯ ПЕРЕМЕННАЯ для анимации
+
 const ANIMATION_FRAMES = ['🌱', '🌿', '💰']; 
 let currentFrameIndex = 0;
 
 // =======================================================
-// === 1-4. Функции API, расчетов и GUI (частично обновлено) ===
+// === 1. Функция расчета ставки (ИСПРАВЛЕНО) ===
+// =======================================================
+
+function calculateRatePerSecond(stakeData, poolData) {
+    const amount = BigInt(stakeData.amount) * RAW_DATA_CORRECTION_FACTOR; 
+    if (amount === 0n) return 0.0;
+
+    const tokenPerSecond = BigInt(poolData.token_per_second); 
+    const unlockingAmount = BigInt(poolData.unlocking_amount);
+    const stakedValue = BigInt(poolData.staked_coins.value);
+    const poolTotalAmount = stakedValue - unlockingAmount;
+    
+    if (poolTotalAmount <= 0n) return 0.0;
+        
+    // НОВОЕ: Используем 10^18 для высокой точности BigInt деления (10^18)
+    const RATE_PRECISION = 10n ** 18n; 
+    
+    // 1. Расчет Raw Reward per Second, масштабированный на 10^18
+    // (tokenPerSecond * amount / poolTotalAmount) * 10^18 
+    const numeratorForRate = tokenPerSecond * amount * RATE_PRECISION;
+    const rateRawBigInt = numeratorForRate / poolTotalAmount; 
+    
+    // 2. Преобразуем BigInt в float и делим на RATE_PRECISION, чтобы получить 
+    // Raw Reward per Second (без масштабирования)
+    const rateFloatRaw = Number(rateRawBigInt) / Number(RATE_PRECISION);
+    
+    // 3. Конвертируем Raw Reward (10^-8 MEE) в MEE/сек (делим на 10^8)
+    const rateMeePerSec = rateFloatRaw / (10 ** TOKEN_DECIMALS); 
+    
+    return rateMeePerSec;
+}
+
+// =======================================================
+// === 2. Остальные функции (без изменений, кроме API) ===
 // =======================================================
 
 function generateApiUrls(accountAddress) {
@@ -78,28 +112,6 @@ async function fetchLedgerTimestamp() {
         return null;
     }
 }
-
-
-function calculateRatePerSecond(stakeData, poolData) {
-    const amount = BigInt(stakeData.amount) * RAW_DATA_CORRECTION_FACTOR; 
-    if (amount === 0n) return 0.0;
-
-    const tokenPerSecond = BigInt(poolData.token_per_second); 
-    const unlockingAmount = BigInt(poolData.unlocking_amount);
-    const stakedValue = BigInt(poolData.staked_coins.value);
-    
-    const poolTotalAmount = stakedValue - unlockingAmount;
-    
-    if (poolTotalAmount <= 0n) return 0.0;
-        
-    const rateRaw = (Number(tokenPerSecond) * Number(amount)) / Number(poolTotalAmount);
-    // Делим на 10^8 для получения ставки MEE в секунду
-    const rateMee = rateRaw / (10 ** TOKEN_DECIMALS); 
-    
-    // Возвращаем чистую ставку в MEE в секунду
-    return rateMee; 
-}
-
 
 function calculateStakeReward(stakeData, poolData, currentTime) {
     if (!stakeData || !poolData || currentTime === null) {
@@ -200,14 +212,18 @@ function formatMeeValue(rawValue) {
     return `${formattedInteger},${fractionalStr}`;
 }
 
+// =======================================================
+// === 3. Функция обновления меток (ИСПРАВЛЕНО) ===
+// =======================================================
+
 function updateLabels(results) {
     const { meeBalance, meeTotalRewardRaw, meeRate } = results;
     
     const walletLabel = document.getElementById('walletAddressDisplay');
     const balanceLabel = document.getElementById('meeBalance');
     const rewardLabel = document.getElementById('meeReward');
-    const rateLabel = document.getElementById('meeRateLabel'); // НОВАЯ МЕТКА
-    const tickerLabel = document.getElementById('rewardTicker'); // НОВАЯ МЕТКА
+    const rateLabel = document.getElementById('meeRateLabel');
+    const tickerLabel = document.getElementById('rewardTicker'); 
 
     const displayAddress = currentWalletAddress === DEFAULT_EXAMPLE_ADDRESS 
         ? `${currentWalletAddress.substring(0, 6)}...${currentWalletAddress.substring(currentWalletAddress.length - 4)} (ПРИМЕР)`
@@ -218,8 +234,8 @@ function updateLabels(results) {
     if (meeBalance === null || meeTotalRewardRaw === null) {
         balanceLabel.textContent = 'Ошибка! Проверьте адрес или сеть.';
         rewardLabel.textContent = 'Ошибка! Проверьте адрес или сеть.';
-        rateLabel.textContent = ''; // Очищаем скорость при ошибке
-        tickerLabel.textContent = '[ОШИБКА]'; // Очищаем тикер при ошибке
+        rateLabel.textContent = ''; 
+        tickerLabel.textContent = '[ОШИБКА]'; 
         balanceLabel.style.color = 'red';
         rewardLabel.style.color = 'red';
         return;
@@ -234,7 +250,7 @@ function updateLabels(results) {
     const balanceStr = meeBalance.toLocaleString('ru-RU', { 
         minimumFractionDigits: TOKEN_DECIMALS, 
         maximumFractionDigits: TOKEN_DECIMALS
-    }).replace(/\s/g, ' ').replace('.', ','); // Корректное русское форматирование
+    }).replace(/\s/g, ' ').replace('.', ','); 
     
     balanceLabel.textContent = balanceStr + ' $MEE';
     balanceLabel.style.color = 'black';
@@ -242,8 +258,8 @@ function updateLabels(results) {
     rewardLabel.textContent = formatMeeValue(meeCurrentReward) + ' $MEE';
     rewardLabel.style.color = 'green';
     
-    // Обновление скорости и тикера
-    const formattedRate = meeRatePerSec.toFixed(8).replace('.', ',');
+    // ИСПРАВЛЕНИЕ: Увеличиваем точность отображения ставки до 12 знаков
+    const formattedRate = meeRatePerSec.toFixed(12).replace('.', ','); 
     rateLabel.textContent = `Скорость: ${formattedRate} MEE/сек`;
     tickerLabel.textContent = ANIMATION_FRAMES[currentFrameIndex];
 
@@ -254,6 +270,9 @@ function updateLabels(results) {
     window.updateTimeout = setTimeout(runUpdateCycle, UPDATE_INTERVAL_SECONDS * 1000);
 }
 
+// =======================================================
+// === 4. Функции симуляции и обработчиков (без изменений) ===
+// =======================================================
 
 function startSimulation() {
     if (window.simulationInterval) return; 
@@ -300,10 +319,6 @@ function resetSimulationState() {
     meeAccumulatedFloatReward = 0.0;
 }
 
-
-// =======================================================
-// === 5. Функции обработчиков (без изменений) ===
-// =======================================================
 
 function openEditWalletDialog() {
     document.getElementById('modalOverlay').style.display = 'flex';
@@ -368,7 +383,6 @@ function unstakeMee() {
     });
 }
 
-// ФУНКЦИЯ: Обработчик для открытия ссылок
 function openLink(url) {
     chrome.tabs.create({ url: url });
 }
