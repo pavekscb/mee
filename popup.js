@@ -20,7 +20,7 @@ const URL_SOURCE = "https://github.com/pavekscb/mee";
 const URL_SITE = "https://meeiro.xyz/staking";
 const URL_GRAPH = "https://dexscreener.com/aptos/pcs-167";
 const URL_SWAP = "https://aptos.pancakeswap.finance/swap?outputCurrency=0x1%3A%3Aaptos_coin%3A%3AAptosCoin&inputCurrency=0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9%3A%3Amee_coin%3A%3AMeeCoin";
-const URL_SWAP_EARNIUM = "https://app.earnium.io/swap?from=0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9%3A%3Amee_coin%3A%3AMeeCoin&to=0x1%3A%3Aaptos_coin%3A%3AAptosCoin";
+const URL_SWAP_EARNIUM = "https://app.panora.exchange/swap/aptos?pair=APT-MEE";
 const URL_SUPPORT = "https://t.me/cripto_karta";
 
 let currentWalletAddress = DEFAULT_EXAMPLE_ADDRESS;
