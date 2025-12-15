@@ -1,6 +1,5 @@
 // --- КОНСТАНТЫ ---
 const DEFAULT_EXAMPLE_ADDRESS = "0x9ba27fc8a65ba4507fc4cca1b456e119e4730b8d8cfaf72a2a486e6d0825b27b";
-// ИСПРАВЛЕНИЕ: УДАЛЕН ПОВТОР в адресе. Теперь адрес токена правильный.
 const MEE_COIN_T0_T1 = "0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin";
 
 const UPDATE_INTERVAL_SECONDS = 60;
@@ -22,6 +21,12 @@ const URL_GRAPH = "https://dexscreener.com/aptos/pcs-167";
 const URL_SWAP = "https://aptos.pancakeswap.finance/swap?outputCurrency=0x1%3A%3Aaptos_coin%3A%3AAptosCoin&inputCurrency=0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9%3A%3Amee_coin%3A%3AMeeCoin";
 const URL_SWAP_EARNIUM = "https://app.panora.exchange/swap/aptos?pair=MEE-APT";
 const URL_SUPPORT = "https://t.me/cripto_karta";
+
+// --- КОНСТАНТЫ: ПРОВЕРКА ВЕРСИИ ---
+const GITHUB_RELEASES_API = "https://api.github.com/repos/pavekscb/mee/releases/latest";
+const GITHUB_REPO_URL = "https://github.com/pavekscb/mee"; 
+let currentVersion = chrome.runtime.getManifest().version; 
+// ------------------------------------
 
 let currentWalletAddress = DEFAULT_EXAMPLE_ADDRESS;
 let meeCurrentReward = 0n;
@@ -86,7 +91,8 @@ function generateApiUrls(accountAddress) {
 
 async function fetchData(apiUrl) {
     try {
-        const response = await fetch(apiUrl, { timeout: 5000 });
+        // Увеличение таймаута для надежности
+        const response = await fetch(apiUrl, { signal: AbortSignal.timeout(10000) }); 
         if (response.status === 404) {
             if (apiUrl.includes("StakeInfo")) {
                 return { amount: "0", reward_amount: "0", reward_debt: "0" };
@@ -106,7 +112,7 @@ async function fetchData(apiUrl) {
 
 async function fetchLedgerTimestamp() {
     try {
-        const response = await fetch(APTOS_LEDGER_URL, { timeout: 5000 });
+        const response = await fetch(APTOS_LEDGER_URL, { signal: AbortSignal.timeout(10000) });
         const data = await response.json();
         return Math.floor(parseInt(data.ledger_timestamp) / 1000000); 
     } catch (e) {
@@ -273,7 +279,7 @@ function updateLabels(results) {
 }
 
 // =======================================================
-// === 4. Функции симуляции и обработчиков (без изменений) ===
+// === 4. Функции симуляции и обработчиков ===
 // =======================================================
 
 function startSimulation() {
@@ -389,6 +395,90 @@ function openLink(url) {
     chrome.tabs.create({ url: url });
 }
 
+// =======================================================
+// === 5. ЛОГИКА ПРОВЕРКИ ВЕРСИИ ===
+// =======================================================
+
+/**
+ * Сравнивает две версии в формате X.Y.Z
+ * @param {string} current - Текущая версия (например, "1.0.1")
+ * @param {string} latest - Последняя версия (например, "1.0.2")
+ * @returns {boolean} true, если latest > current
+ */
+function isNewVersionAvailable(current, latest) {
+    const cParts = current.replace(/^v/i, '').split('.').map(Number);
+    const lParts = latest.replace(/^v/i, '').split('.').map(Number);
+
+    for (let i = 0; i < Math.max(cParts.length, lParts.length); i++) {
+        const c = cParts[i] || 0;
+        const l = lParts[i] || 0;
+
+        if (l > c) return true;
+        if (l < c) return false;
+    }
+    return false;
+}
+
+async function checkUpdate() {
+    const checkBtn = document.getElementById('checkVersionBtn');
+    checkBtn.textContent = 'Проверка...';
+    checkBtn.disabled = true;
+    
+    const modal = document.getElementById('updateModal');
+    const modalHeader = document.getElementById('updateModalHeader');
+    const modalText = document.getElementById('updateModalText');
+    const modalActions = document.getElementById('updateModalActions');
+    const newVersionTag = document.getElementById('newVersionTag');
+    const closeUpdateBtn = document.getElementById('closeUpdateModalBtn');
+    
+    try {
+        const response = await fetch(GITHUB_RELEASES_API, { signal: AbortSignal.timeout(10000) });
+        if (!response.ok) {
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
+        
+        const releaseData = await response.json();
+        // Тег может быть "v1.0.2", поэтому убираем "v"
+        const latestVersion = releaseData.tag_name ? releaseData.tag_name.replace(/^v/i, '') : '99.99.99'; 
+        
+        if (isNewVersionAvailable(currentVersion, latestVersion)) {
+            // Обновление доступно
+            modalHeader.textContent = '🆕 Доступно обновление!';
+            modalHeader.style.color = '#DC143C';
+            modalText.textContent = `Новая версия V${latestVersion} доступна для скачивания.`;
+            newVersionTag.textContent = latestVersion;
+            modalActions.style.display = 'flex';
+            closeUpdateBtn.style.display = 'none'; 
+
+            // Ссылка на скачивание ZIP-архива конкретного релиза
+            const downloadUrl = releaseData.zipball_url || GITHUB_REPO_URL + "/archive/refs/tags/" + releaseData.tag_name + ".zip"; 
+            
+            document.getElementById('downloadUpdateBtn').onclick = () => {
+                openLink(downloadUrl);
+                modal.style.display = 'none';
+            };
+
+        } else {
+            // Последняя версия
+            modalHeader.textContent = '✅ У вас последняя версия!';
+            modalHeader.style.color = '#4CAF50';
+            modalText.textContent = `Текущая версия V${currentVersion}.`;
+            modalActions.style.display = 'none';
+            closeUpdateBtn.style.display = 'block';
+            
+        }
+
+        modal.style.display = 'flex'; // Показать модальное окно
+
+    } catch (error) {
+        console.error("Ошибка проверки версии:", error);
+        alert("Не удалось проверить версию. Проверьте подключение или API GitHub.");
+    } finally {
+        checkBtn.textContent = 'Проверить последнюю версию';
+        checkBtn.disabled = false;
+    }
+}
+
 
 async function runUpdateCycle() {
     stopSimulationAndTimers(); 
@@ -403,6 +493,9 @@ async function runUpdateCycle() {
 document.addEventListener('DOMContentLoaded', async () => {
     // Загрузка адреса и установка начального вида
     await loadWalletAddress();
+    
+    // Инициализация версии в интерфейсе
+    document.getElementById('currentVersion').textContent = currentVersion;
     
     // Отображение контракта
     document.getElementById('meeContractValue').textContent = MEE_COIN_T0_T1;
@@ -426,6 +519,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('linkSwapBtn').addEventListener('click', () => openLink(URL_SWAP));
     document.getElementById('linkSwapEarniumBtn').addEventListener('click', () => openLink(URL_SWAP_EARNIUM));
     document.getElementById('linkSupportBtn').addEventListener('click', () => openLink(URL_SUPPORT));
+
+    // ОБРАБОТЧИКИ: ПРОВЕРКА ВЕРСИИ
+    document.getElementById('checkVersionBtn').addEventListener('click', checkUpdate);
 
 
     // Обработчики для модальных окон (остаются без изменений)
@@ -456,6 +552,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('cancelUnstakeModalBtn').addEventListener('click', () => {
         document.getElementById('unstakeModal').style.display = 'none';
+    });
+
+    // ОБРАБОТЧИКИ: Модальное окно обновления
+    document.getElementById('closeUpdateModalBtn').addEventListener('click', () => {
+        document.getElementById('updateModal').style.display = 'none';
+    });
+    document.getElementById('cancelUpdateModalBtn').addEventListener('click', () => {
+        document.getElementById('updateModal').style.display = 'none';
     });
 
 
