@@ -4,6 +4,7 @@
     "version": "1.0.1",
     "description": "Монитор стейкинга $MEE на Aptos. Отображает баланс и награду в реальном времени.",
     "permissions": ["storage"],
+    "host_permissions": ["https://api.github.com/"],
     
     "action": {
         "default_popup": "popup.html",
