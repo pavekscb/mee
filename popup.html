@@ -2,9 +2,8 @@
 <html>
 <head>
     <meta charset="UTF-8"> 
-    
     <style>
-        /* ИСПРАВЛЕНИЕ: Увеличение размера окна до 400px */
+
         body {
             width: 400px; 
             min-height: 250px; 
@@ -12,10 +11,10 @@
             padding: 10px;
             margin: 0;
             overflow-x: hidden;
+            overflow-y: hidden;
             position: relative;
         }
 
-        /* Общие стили для кнопок */
         button {
             cursor: pointer;
             padding: 8px;
@@ -24,7 +23,6 @@
             border: 1px solid #ccc;
         }
         
-        /* Стиль для секций */
         .section {
             margin-bottom: 15px;
             padding: 10px;
@@ -32,24 +30,21 @@
             border-radius: 5px;
         }
 
-        /* Дополнительный стиль для кнопок-счетчиков, которые должны растягиваться */
         #editWalletBtn {
             width: 100%;
         }
 
-        /* Стиль для нового заголовка (Обновлено на MEE) */
         .title-header {
             text-align: center;
-            color: #1E90FF; /* Яркий синий цвет */
+            color: #1E90FF; 
             margin: 0 0 15px 0;
             padding: 5px 0 10px 0;
-            border-bottom: 2px solid #ddd; /* Светлая линия под заголовком */
-            font-size: 1.6em;
+            border-bottom: 2px solid #ddd; 
+            font-size: 1.1em;
             font-weight: 900;
             letter-spacing: 0.5px;
         }
 
-        /* Стили для модальных окон (для переиспользования кода) */
         #modalOverlay, #harvestModal, #stakeModal, #unstakeModal {
             position: fixed; 
             top: 0; 
@@ -62,9 +57,8 @@
             align-items: center; 
         }
 
-        /* СТИЛЬ: для кнопок-ссылок */
         .link-button {
-            background-color: #fffacd; /* Светло-желтый (LemonChiffon) */
+            background-color: #fffacd; 
             color: #333;
             border: 1px solid #ffcc00;
             padding: 5px 10px;
@@ -74,12 +68,21 @@
             min-width: 100px; 
         }
 
-        /* НОВЫЙ СТИЛЬ: Для акцента на награде */
         #meeReward {
             font-weight: bold; 
             color: green; 
-            font-size: 1.6em; /* Увеличенный размер */
-            text-shadow: 1px 1px 2px rgba(0, 100, 0, 0.3); /* Легкая зеленая тень */
+            font-size: 1.6em; 
+            text-shadow: 1px 1px 2px rgba(0, 100, 0, 0.3); 
+        }
+
+        .wallet-sub-balances {
+            font-size: 0.82em; 
+            color: #666; 
+            margin-top: 5px; 
+            border-top: 1px dashed #ccc; 
+            padding-top: 5px;
+            display: flex;
+            justify-content: space-between;
         }
     </style>
 </head>
@@ -88,9 +91,14 @@
     <h1 class="title-header">МАЙНИНГ МОНЕТЫ $MEE (APTOS)</h1>
     
     <div id="mainContent">
-        
         <div class="section">
             <p id="walletAddressDisplay" style="margin: 0; font-size: 1.1em;">Кошелек: Загрузка...</p>
+            
+            <div id="walletLiquidBalances" class="wallet-sub-balances">
+                <div>APT: <span id="walletAptBalance">...</span></div>
+                <div>MEE: <span id="walletMeeBalance">...</span></div>
+            </div>
+
             <button id="editWalletBtn">Сменить кошелек</button>
         </div>
         
@@ -139,7 +147,7 @@
                 <button id="linkSupportBtn" class="link-button">Поддержка</button>
             </div>
         </div>
-        </div>
+    </div>
     
     <div id="modalOverlay" style="z-index: 1000;">
         <div style="background: white; padding: 20px; border-radius: 8px; max-width: 80%;">
@@ -181,7 +189,8 @@
         </div>
     </div>
 
-    <div id="stakeModal" style="z-index: 1002;">
+
+   <div id="stakeModal" style="z-index: 1002;">
         <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 380px; text-align: left;">
             <h3 style="color: #4CAF50; margin-top: 0;">✅ Контракт скопирован! Открывается страница Stake.</h3>
             
@@ -220,7 +229,7 @@
         </div>
     </div>
     
-    <div id="unstakeModal" style="z-index: 1003;">
+      <div id="unstakeModal" style="z-index: 1003;">
         <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 400px; text-align: left;">
             <h3 style="color: #DC143C; margin-top: 0;">⚠️ Готовы забрать $MEE из стейкинга?</h3>
             
@@ -265,7 +274,7 @@
 
 <div class="section" style="margin-top: 15px; padding: 5px; border: none; text-align: center;">
     <span style="font-size: 0.8em; color: #888;">
-        Версия V<span id="currentVersion">1.0.1</span> | 
+        Версия V<span id="currentVersion">1.0.2</span> | 
         <button id="checkVersionBtn" style="background: none; border: none; padding: 0; margin: 0; color: #1E90FF; text-decoration: underline; cursor: pointer; font-size: 1em; font-weight: normal;">
             Проверить последнюю версию
         </button>
@@ -275,7 +284,7 @@
 <div id="updateModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 2000;">
     <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 350px; text-align: center;">
         <h3 id="updateModalHeader" style="margin-top: 0; color: #4CAF50;">✅ У вас последняя версия!</h3>
-        <p id="updateModalText" style="font-size: 1.1em;">Текущая версия: V1.0.1</p>
+        <p id="updateModalText" style="font-size: 1.1em;">Текущая версия: V1.0.2</p>
         <div id="updateModalActions" style="display: none; flex-direction: column; gap: 10px; margin-top: 20px;">
             <button id="downloadUpdateBtn" style="padding: 10px; background-color: #1E90FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
                 Скачать V<span id="newVersionTag"></span>
