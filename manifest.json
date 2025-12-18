@@ -1,10 +1,9 @@
 {
     "manifest_version": 3,
     "name": "MEE Aptos Staking Monitor",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Монитор стейкинга $MEE на Aptos. Отображает баланс и награду в реальном времени.",
     "permissions": ["storage"],
-    "host_permissions": ["https://api.github.com/"],
     
     "action": {
         "default_popup": "popup.html",
