@@ -84,6 +84,59 @@
             display: flex;
             justify-content: space-between;
         }
+        .info-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: #FF7043;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 6px 0;
+     display: flex;           
+    align-items: center;       
+    justify-content: center;   
+
+    padding: 0;                
+}
+
+.info-btn:hover {
+    background: #E64A19;
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: #fff;
+    padding: 16px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 360px;
+    font-size: 13px;
+}
+
+.info-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: #FF7043;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 6px 40px 6px 6px; 
+}
+
+
     </style>
 </head>
 <body>
@@ -94,10 +147,11 @@
         <div class="section">
             <p id="walletAddressDisplay" style="margin: 0; font-size: 1.1em;">Кошелек: Загрузка...</p>
             
-            <div id="walletLiquidBalances" class="wallet-sub-balances">
-                <div>APT: <span id="walletAptBalance">...</span></div>
-                <div>MEE: <span id="walletMeeBalance">...</span></div>
-            </div>
+           <div id="walletLiquidBalances" class="wallet-sub-balances">
+                <div id="walletAptLine"></div>
+               <div id="walletMeeLine"></div>
+           </div>
+
 
             <button id="editWalletBtn">Сменить кошелек</button>
         </div>
@@ -119,6 +173,7 @@
                 <span id="meeReward">0,00000000 $MEE</span>
                 <span id="meeRateLabel" style="display: block; font-size: 0.8em; color: #666; margin-top: 5px;">Скорость: 0.00 MEE/сек</span>
             </div>
+            <button id="miningInfoBtn" class="info-btn">?</button>
             <button id="harvestBtn" style="background-color: #4CAF50; color: white; width: 120px; margin: 0; flex-shrink: 0;">Забрать награду</button>
         </div>
         
@@ -142,21 +197,31 @@
                 <button id="linkSourceBtn" class="link-button">Исходный код</button>
                 <button id="linkSiteBtn" class="link-button">Сайт</button>
                 <button id="linkGraphBtn" class="link-button">График $MEE</button>
-                <button id="linkSwapBtn" class="link-button">Обмен $MEE/$APT</button>
-                <button id="linkSwapEarniumBtn" class="link-button">Обмен $MEE/APT (2)</button>
+                <button id="aboutProjectBtn">О проекте</button>
+                <button id="linkSwapEarniumBtn" class="link-button">Обмен $MEE/APT (Panora)</button>
                 <button id="linkSupportBtn" class="link-button">Поддержка</button>
             </div>
         </div>
     </div>
     
-    <div id="modalOverlay" style="z-index: 1000;">
-        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 80%;">
-            <h4>Введите новый адрес кошелька</h4>
-            <input type="text" id="newWalletInput" style="width: 90%; padding: 8px; margin-bottom: 10px;">
-            <button id="saveNewWalletBtn">Сохранить</button>
-            <button id="cancelNewWalletBtn" style="background-color: #ccc;">Отмена</button>
+<div id="modalOverlay" style="z-index: 1000;">
+    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 80%;">
+        <h4>Введите новый адрес кошелька</h4>
+        
+        <div style="position: relative; width: 95%; margin-bottom: 10px;">
+            <input type="text" id="newWalletInput" 
+                   style="width: 100%; padding: 8px 30px 8px 8px; box-sizing: border-box;">
+            <span id="clearWalletInput" 
+                  style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); 
+                         cursor: pointer; color: #aaa; font-size: 20px; font-weight: bold; display: none;">
+                &times;
+            </span>
         </div>
+
+        <button id="saveNewWalletBtn">Сохранить</button>
+        <button id="cancelNewWalletBtn" style="background-color: #ccc;">Отмена</button>
     </div>
+</div>
     
     <div id="harvestModal" style="z-index: 1001;">
         <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 350px; text-align: left;">
@@ -274,7 +339,7 @@
 
 <div class="section" style="margin-top: 15px; padding: 5px; border: none; text-align: center;">
     <span style="font-size: 0.8em; color: #888;">
-        Версия V<span id="currentVersion">1.0.2</span> | 
+        Версия V<span id="currentVersion">1.0.3</span> | 
         <button id="checkVersionBtn" style="background: none; border: none; padding: 0; margin: 0; color: #1E90FF; text-decoration: underline; cursor: pointer; font-size: 1em; font-weight: normal;">
             Проверить последнюю версию
         </button>
@@ -284,7 +349,7 @@
 <div id="updateModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 2000;">
     <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 350px; text-align: center;">
         <h3 id="updateModalHeader" style="margin-top: 0; color: #4CAF50;">✅ У вас последняя версия!</h3>
-        <p id="updateModalText" style="font-size: 1.1em;">Текущая версия: V1.0.2</p>
+        <p id="updateModalText" style="font-size: 1.1em;">Текущая версия: V1.0.3</p>
         <div id="updateModalActions" style="display: none; flex-direction: column; gap: 10px; margin-top: 20px;">
             <button id="downloadUpdateBtn" style="padding: 10px; background-color: #1E90FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
                 Скачать V<span id="newVersionTag"></span>
@@ -298,6 +363,114 @@
         </button>
     </div>
 </div>
+
+<div id="miningInfoModal" class="modal-overlay">
+    <div class="modal">
+        <h3 style="color:#E53935;">⛏️ О скорости майнинга</h3>
+
+        <p>
+            Скорость майнинга напрямую зависит от вашего
+            <b>личного баланса монет $MEE</b> в майнере и
+            <b>общего пула наград</b>.
+        </p>
+
+        <p><b>Примерные показатели:</b></p>
+
+        <ul style="line-height:1.6;">
+            <li>🔹 <b>1 000 MEE</b> → ~0.00000460 MEE/сек</li>
+            <li>🔹 <b>10 000 MEE</b> → ~0.00004601 MEE/сек</li>
+            <li>🔹 <b>100 000 MEE</b> → ~0.00046007 MEE/сек</li>
+        </ul>
+
+        <p style="margin-top:10px;">
+            Чем больше монет вы отправили в майнинг,
+            тем <b>выше ваша доля</b> в распределении новых монет.
+        </p>
+
+      <hr style="margin:12px 0; border:none; border-top:1px dashed #ccc;">
+
+<p style="margin:8px 0;">
+    <b>Где взять монету $MEE?</b>
+</p>
+
+<p
+   id="openMeeSwap"
+   style="
+        color:#2E7D32;
+        cursor:pointer;
+        font-weight:bold;
+        text-align:center;
+        background:#E8F5E9;
+        padding:8px;
+        border-radius:6px;
+        border:1px solid #A5D6A7;
+   "
+>
+    🔄 Купить $MEE в DEX-обменнике
+</p>
+
+
+        <p style="margin-top:14px; color:#1E88E5; cursor:pointer; text-align:center;"
+           id="closeMiningInfo">
+            ⬅️ Понятно, закрыть справку
+        </p>
+    </div>
+</div>
+
+<div id="aboutProjectModal" class="modal-overlay">
+    <div class="modal">
+        <h3 style="color:#2E7D32;">🚀 О проекте MEE Miner</h3>
+
+        <p>
+            <b>MEE Miner</b> позволяет накапливать монету <b>$MEE</b>
+            даже при пополнении баланса майнера всего на
+            <b>1 MEE</b>.
+        </p>
+
+        <p><b>💡 Бесплатные монеты:</b></p>
+        <p>
+            Вы можете попросить монету в чате поддержки —
+            вам её пришлют <b>бесплатно</b>.
+            Просто укажите свой кошелёк.
+        </p>
+
+        <p><b>⚙️ Процесс:</b></p>
+        <p>
+            После пополнения баланса майнинг
+            <b>запускается автоматически</b>.
+        </p>
+
+        <p style="color:#D84315;">
+            <b>⚠️ Важно:</b><br>
+            Для транзакций необходим <b>APT</b> (газ).
+            Монета <b>MEE</b> имеет пул на DEX и может
+            быть обменяна на APT.
+        </p>
+
+        <p><b>📈 О монете:</b></p>
+        <p>
+            <b>MEE</b> — это токен площадки <b>MEEIRO</b>.<br>
+            Мы надеемся на развитие проекта и пользу
+            для сообщества.
+        </p>
+
+        <button id="closeAboutProject"
+            style="
+                margin-top:14px;
+                width:100%;
+                padding:8px;
+                background:#2E7D32;
+                color:white;
+                border:none;
+                border-radius:6px;
+                cursor:pointer;
+                font-weight:bold;
+            ">
+            ✅ Закрыть
+        </button>
+    </div>
+</div>
+
 
     <script src="popup.js"></script>
 </body>
