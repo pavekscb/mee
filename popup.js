@@ -19,7 +19,8 @@ const URL_SOURCE = "https://github.com/pavekscb/mee";
 const URL_SITE = "https://meeiro.xyz/staking";
 const URL_GRAPH = "https://dexscreener.com/aptos/pcs-167";
 const URL_SWAP = "https://aptos.pancakeswap.finance/swap?outputCurrency=0x1%3A%3Aaptos_coin%3A%3AAptosCoin&inputCurrency=0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9%3A%3Amee_coin%3A%3AMeeCoin";
-const URL_SWAP_EARNIUM = "https://app.panora.exchange/swap/aptos?pair=MEE-APT";
+const URL_SWAP_EARNIUM = "https://app.panora.exchange/?ref=V94RDWEH#/swap/aptos?pair=MEE-APT";
+
 const URL_SUPPORT = "https://t.me/cripto_karta";
 
 // --- КОНСТАНТЫ: ПРОВЕРКА ВЕРСИИ ---
@@ -28,17 +29,69 @@ const GITHUB_REPO_URL = "https://github.com/pavekscb/mee";
 let currentVersion = chrome.runtime.getManifest().version; 
 // ------------------------------------
 
-
 let currentWalletAddress = DEFAULT_EXAMPLE_ADDRESS;
 let meeCurrentReward = 0n;
 let meeRatePerSec = 0.0;
 let meeAccumulatedFloatReward = 0.0;
 
+let aptUsdPrice = null;
+let meeUsdPrice = null;
+let lastAptBalance = 0;
+let lastMeeBalance = 0;
+
 const ANIMATION_FRAMES = ['🌱', '🌿', '💰']; 
 let currentFrameIndex = 0;
 
+// Вспомогательная функция для правильного сравнения версий (например, 1.0.3 > 1.0.2)
+function isNewer(current, latest) {
+    const c = current.split('.').map(Number);
+    const l = latest.split('.').map(Number);
+    for (let i = 0; i < Math.max(c.length, l.length); i++) {
+        const v1 = c[i] || 0;
+        const v2 = l[i] || 0;
+        if (v2 > v1) return true;  // Версия в облаке выше
+        if (v2 < v1) return false; // Ваша версия выше
+    }
+    return false;
+}
+
+// ================ курс apt
+async function fetchAptPrice() {
+    try {
+        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=aptos&vs_currencies=usd");
+        const data = await res.json();
+        return data.aptos.usd;
+    } catch (e) {
+        console.error("APT price error", e);
+        return null;
+    }
+}
+
+// ================ курс mee
+async function fetchMeePrice() {
+    try {
+        const res = await fetch("https://api.dexscreener.com/latest/dex/pairs/aptos/pcs-167");
+        const data = await res.json();
+        return parseFloat(data.pair.priceUsd);
+    } catch (e) {
+        console.error("MEE price error", e);
+        return null;
+    }
+}
+
+//======== обновление цен
+async function updateTokenPrices() {
+    const [aptPrice, meePrice] = await Promise.all([
+        fetchAptPrice(),
+        fetchMeePrice()
+    ]);
+    if (aptPrice !== null) aptUsdPrice = aptPrice;
+    if (meePrice !== null) meeUsdPrice = meePrice;
+    renderWalletLines();
+}
+
 // =======================================================
-// === 1. Балансы кошелька (из Python) ===
+// === 1. Балансы кошелька ===
 // =======================================================
 
 async function fetchWalletCoinBalance(address, coinType) {
@@ -58,19 +111,36 @@ async function updateWalletLiquidBalances() {
     try {
         const aptRaw = await fetchWalletCoinBalance(currentWalletAddress, APT_COIN);
         const meeRaw = await fetchWalletCoinBalance(currentWalletAddress, MEE_COIN_T0_T1);
-
-        const apt = Number(aptRaw) / 1e8; // APT = 8 decimals
-        const mee = Number(meeRaw) / 1e6; // MEE = 6 decimals (переносим запятую на 2 знака влево относительно APT)
-
-        document.getElementById('walletAptBalance').textContent = apt.toFixed(8);
-        document.getElementById('walletMeeBalance').textContent = mee.toFixed(6);
+        lastAptBalance = Number(aptRaw) / 1e8;
+        lastMeeBalance = Number(meeRaw) / 1e6;
+        renderWalletLines();
     } catch (e) {
         console.error("UI Update error:", e);
     }
 }
 
+function renderWalletLines() {
+    const aptLine = document.getElementById("walletAptLine");
+    const meeLine = document.getElementById("walletMeeLine");
+    if (!aptLine || !meeLine) return;
+
+    let aptText = `APT: ${lastAptBalance.toFixed(8)}`;
+    if (aptUsdPrice !== null) {
+        const aptUsdValue = lastAptBalance * aptUsdPrice;
+        aptText += ` <span style="color:#2E8B57">($${aptUsdPrice.toFixed(2)} / <b>$${aptUsdValue.toFixed(2)}</b>)</span>`;
+    }
+    aptLine.innerHTML = aptText;
+
+    let meeText = `MEE: ${lastMeeBalance.toFixed(6)}`;
+    if (meeUsdPrice !== null) {
+        const meeUsdValue = lastMeeBalance * meeUsdPrice;
+        meeText += ` <span style="color:#2E8B57">($${meeUsdPrice.toFixed(6)} / <b>$${meeUsdValue.toFixed(4)}</b>)</span>`;
+    }
+    meeLine.innerHTML = meeText;
+}
+
 // =======================================================
-// === 2. Функции расчета и API (Без изменений) ===
+// === 2. Функции расчета и API ===
 // =======================================================
 
 function calculateRatePerSecond(stakeData, poolData) {
@@ -176,14 +246,16 @@ function updateLabels(results) {
     const rateLabel = document.getElementById('meeRateLabel');
     const tickerLabel = document.getElementById('rewardTicker'); 
 
-    const displayAddress = currentWalletAddress === DEFAULT_EXAMPLE_ADDRESS 
-        ? `${currentWalletAddress.substring(0, 6)}... (ПРИМЕР)`
-        : `${currentWalletAddress.substring(0, 6)}...${currentWalletAddress.substring(currentWalletAddress.length - 4)}`;
-    walletLabel.textContent = `Кошелек: ${displayAddress}`;
-    walletLabel.style.color = currentWalletAddress === DEFAULT_EXAMPLE_ADDRESS ? 'darkorange' : 'purple';
+    if (walletLabel) {
+        const displayAddress = currentWalletAddress === DEFAULT_EXAMPLE_ADDRESS 
+            ? `${currentWalletAddress.substring(0, 6)}... (ПРИМЕР)`
+            : `${currentWalletAddress.substring(0, 6)}...${currentWalletAddress.substring(currentWalletAddress.length - 4)}`;
+        walletLabel.textContent = `Кошелек: ${displayAddress}`;
+        walletLabel.style.color = currentWalletAddress === DEFAULT_EXAMPLE_ADDRESS ? 'darkorange' : 'purple';
+    }
     
     if (meeBalance === null) {
-        balanceLabel.textContent = 'Ошибка!';
+        if (balanceLabel) balanceLabel.textContent = 'Ошибка!';
         return;
     }
     
@@ -191,10 +263,20 @@ function updateLabels(results) {
     meeRatePerSec = meeRate; 
     meeAccumulatedFloatReward = 0.0;
     
-    balanceLabel.textContent = meeBalance.toLocaleString('ru-RU', { minimumFractionDigits: 8 }).replace(/\s/g, ' ').replace('.', ',') + ' $MEE';
-    rewardLabel.textContent = formatMeeValue(meeCurrentReward) + ' $MEE';
-    rateLabel.textContent = `Скорость: ${meeRatePerSec.toFixed(12).replace('.', ',')} MEE/сек`;
-    tickerLabel.textContent = ANIMATION_FRAMES[currentFrameIndex];
+    let usdText = "";
+    if (meeUsdPrice !== null) {
+        const usdValue = meeBalance * meeUsdPrice;
+        usdText = ` <span style="color:#228B22">($${usdValue.toFixed(2)})</span>`;
+    }
+
+    if (balanceLabel) {
+        balanceLabel.innerHTML = meeBalance.toLocaleString('ru-RU', { minimumFractionDigits: 8 })
+            .replace(/\s/g, ' ').replace('.', ',') + ' $MEE' + usdText;
+    }
+
+    if (rewardLabel) rewardLabel.textContent = formatMeeValue(meeCurrentReward) + ' $MEE';
+    if (rateLabel) rateLabel.textContent = `Скорость: ${meeRatePerSec.toFixed(12).replace('.', ',')} MEE/сек`;
+    if (tickerLabel) tickerLabel.textContent = ANIMATION_FRAMES[currentFrameIndex];
 
     if (!window.simulationInterval) startSimulation();
     window.updateTimeout = setTimeout(runUpdateCycle, UPDATE_INTERVAL_SECONDS * 1000);
@@ -210,9 +292,11 @@ function startSimulation() {
             addedRewardRaw += RAW_UNIT;
         }
         meeCurrentReward += addedRewardRaw; 
-        document.getElementById('meeReward').textContent = formatMeeValue(meeCurrentReward) + ' $MEE';
+        const rewardLabel = document.getElementById('meeReward');
+        const tickerLabel = document.getElementById('rewardTicker');
+        if (rewardLabel) rewardLabel.textContent = formatMeeValue(meeCurrentReward) + ' $MEE';
         currentFrameIndex = (currentFrameIndex + 1) % ANIMATION_FRAMES.length;
-        document.getElementById('rewardTicker').textContent = ANIMATION_FRAMES[currentFrameIndex];
+        if (tickerLabel) tickerLabel.textContent = ANIMATION_FRAMES[currentFrameIndex];
     }, 1000); 
 }
 
@@ -222,7 +306,9 @@ function stopSimulationAndTimers() {
 }
 
 function handleSaveWallet() {
-    const trimmedAddress = document.getElementById('newWalletInput').value.trim();
+    const input = document.getElementById('newWalletInput');
+    if (!input) return;
+    const trimmedAddress = input.value.trim();
     if (trimmedAddress.length === 66 && trimmedAddress.startsWith("0x")) {
         document.getElementById('modalOverlay').style.display = 'none';
         saveWalletAddress(trimmedAddress).then(() => {
@@ -235,114 +321,152 @@ function handleSaveWallet() {
 async function runUpdateCycle() {
     stopSimulationAndTimers(); 
     updateWalletLiquidBalances(); 
+    await updateTokenPrices();  
     const results = await fetchAndCalculateRewards();
     updateLabels(results);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadWalletAddress();
-    document.getElementById('meeContractValue').textContent = MEE_COIN_T0_T1;
+
+    // --- БЕЗОПАСНАЯ ПРИВЯЗКА СОБЫТИЙ ---
+    const addEvent = (id, event, fn) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, fn);
+    };
+
+    addEvent('miningInfoBtn', 'click', () => { document.getElementById('miningInfoModal').style.display = 'flex'; });
+    addEvent('closeMiningInfo', 'click', () => { document.getElementById('miningInfoModal').style.display = 'none'; });
+
+    addEvent('aboutProjectBtn', 'click', () => { document.getElementById('aboutProjectModal').style.display = 'flex'; });
+    addEvent('closeAboutProject', 'click', () => { document.getElementById('aboutProjectModal').style.display = 'none'; });
+
+    const contractLabel = document.getElementById('meeContractValue');
+    if (contractLabel) contractLabel.textContent = MEE_COIN_T0_T1;
     
-    document.getElementById('editWalletBtn').addEventListener('click', () => {
+    addEvent('editWalletBtn', 'click', () => {
         document.getElementById('modalOverlay').style.display = 'flex';
         document.getElementById('newWalletInput').value = currentWalletAddress;
     });
-    document.getElementById('saveNewWalletBtn').addEventListener('click', handleSaveWallet);
-    document.getElementById('cancelNewWalletBtn').addEventListener('click', () => document.getElementById('modalOverlay').style.display = 'none');
+    addEvent('saveNewWalletBtn', 'click', handleSaveWallet);
+    addEvent('cancelNewWalletBtn', 'click', () => document.getElementById('modalOverlay').style.display = 'none');
     
-    document.getElementById('addMeeBtn').addEventListener('click', () => {
+    addEvent('addMeeBtn', 'click', () => {
         navigator.clipboard.writeText(MEE_COIN_T0_T1);
         document.getElementById('stakeModal').style.display = 'flex';
     });
-    document.getElementById('harvestBtn').addEventListener('click', () => {
+    addEvent('harvestBtn', 'click', () => {
         navigator.clipboard.writeText(MEE_COIN_T0_T1);
         document.getElementById('harvestModal').style.display = 'flex';
     });
-    document.getElementById('unstakeBtn').addEventListener('click', () => {
+    addEvent('unstakeBtn', 'click', () => {
         navigator.clipboard.writeText(MEE_COIN_T0_T1);
         document.getElementById('unstakeModal').style.display = 'flex';
     });
 
+    // Логика для крестика очистки
+    const walletInput = document.getElementById('newWalletInput');
+    const clearBtn = document.getElementById('clearWalletInput');
+
+    if (walletInput && clearBtn) {
+        walletInput.addEventListener('input', () => {
+            clearBtn.style.display = walletInput.value.length > 0 ? 'block' : 'none';
+        });
+
+        clearBtn.addEventListener('click', () => {
+            walletInput.value = '';
+            clearBtn.style.display = 'none';
+            walletInput.focus();
+        });
+
+        addEvent('editWalletBtn', 'click', () => {
+            clearBtn.style.display = walletInput.value.length > 0 ? 'block' : 'none';
+        });
+    }
+
+    // --- ИСПРАВЛЕННЫЙ ЦИКЛ LINK MAP ---
     const linkMap = {
         'linkSourceBtn': URL_SOURCE, 'linkSiteBtn': URL_SITE, 'linkGraphBtn': URL_GRAPH,
         'linkSwapBtn': URL_SWAP, 'linkSwapEarniumBtn': URL_SWAP_EARNIUM, 'linkSupportBtn': URL_SUPPORT
     };
     Object.keys(linkMap).forEach(id => {
-        document.getElementById(id).addEventListener('click', () => chrome.tabs.create({ url: linkMap[id] }));
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('click', () => chrome.tabs.create({ url: linkMap[id] }));
+        }
     });
 
-    document.getElementById('copyContractBtn').addEventListener('click', () => {
+    addEvent('copyContractBtn', 'click', () => {
         navigator.clipboard.writeText(MEE_COIN_T0_T1);
         alert("Скопировано!");
     });
 
-    document.getElementById('proceedHarvestModalBtn').addEventListener('click', () => chrome.tabs.create({ url: HARVEST_BASE_URL }));
-    document.getElementById('proceedStakeModalBtn').addEventListener('click', () => chrome.tabs.create({ url: ADD_MEE_URL }));
-    document.getElementById('closeUnstakeModalBtn').addEventListener('click', () => chrome.tabs.create({ url: UNSTAKE_BASE_URL }));
+    addEvent('proceedHarvestModalBtn', 'click', () => chrome.tabs.create({ url: HARVEST_BASE_URL }));
+    addEvent('proceedStakeModalBtn', 'click', () => chrome.tabs.create({ url: ADD_MEE_URL }));
+    addEvent('closeUnstakeModalBtn', 'click', () => chrome.tabs.create({ url: UNSTAKE_BASE_URL }));
+
     ['cancelHarvestModalBtn', 'cancelStakeModalBtn', 'cancelUnstakeModalBtn'].forEach(id => {
-        document.getElementById(id).addEventListener('click', (e) => e.target.closest('div[id$=\"Modal\"]').style.display = 'none');
+        addEvent(id, 'click', (e) => e.target.closest('div[id$="Modal"]').style.display = 'none');
     });
 
-// --- ЛОГИКА ПРОВЕРКИ ВЕРСИИ ---
+    // --- ЛОГИКА ПРОВЕРКИ ВЕРСИИ (УЛУЧШЕННАЯ) ---
     const checkVersionBtn = document.getElementById('checkVersionBtn');
-    const updateModal = document.getElementById('updateModal');
-    const updateModalHeader = document.getElementById('updateModalHeader');
-    const updateModalText = document.getElementById('updateModalText');
-    const updateModalActions = document.getElementById('updateModalActions');
-    const closeUpdateModalBtn = document.getElementById('closeUpdateModalBtn');
-    const downloadUpdateBtn = document.getElementById('downloadUpdateBtn');
-    const cancelUpdateModalBtn = document.getElementById('cancelUpdateModalBtn');
-    const newVersionTagSpan = document.getElementById('newVersionTag');
-
-    checkVersionBtn.addEventListener('click', async () => {
-        checkVersionBtn.textContent = "Проверка...";
-        checkVersionBtn.disabled = true;
-
-        try {
-            const response = await fetch(GITHUB_RELEASES_API);
-            if (!response.ok) throw new Error("Ошибка сети");
-            
-            const data = await response.json();
-            const latestVersion = data.tag_name.replace('v', '').replace('V', ''); // Убираем 'v' если есть
-            
-            updateModal.style.display = 'flex';
-
-            // Сравниваем версии
-            if (latestVersion !== currentVersion) {
-                updateModalHeader.textContent = "🚀 Доступно обновление!";
-                updateModalHeader.style.color = "#1E90FF";
-                updateModalText.textContent = `Ваша версия: ${currentVersion}. Новая версия: ${latestVersion}`;
-                newVersionTagSpan.textContent = latestVersion;
+    if (checkVersionBtn) {
+        checkVersionBtn.addEventListener('click', async () => {
+            checkVersionBtn.textContent = "Проверка...";
+            checkVersionBtn.disabled = true;
+            try {
+                const response = await fetch(GITHUB_RELEASES_API);
+                if (!response.ok) throw new Error("Ошибка сети");
+                const data = await response.json();
                 
-                updateModalActions.style.display = 'flex';
-                closeUpdateModalBtn.style.display = 'none';
-            } else {
-                updateModalHeader.textContent = "✅ У вас последняя версия!";
-                updateModalHeader.style.color = "#4CAF50";
-                updateModalText.textContent = `Текущая версия V${currentVersion} является актуальной.`;
+                // Очищаем тег от букв 'v', оставляем только цифры и точки
+                const latestVersion = data.tag_name.replace(/[vV]/g, '');
                 
-                updateModalActions.style.display = 'none';
-                closeUpdateModalBtn.style.display = 'block';
+                const updateModal = document.getElementById('updateModal');
+                if (updateModal) updateModal.style.display = 'flex';
+
+                const header = document.getElementById('updateModalHeader');
+                const text = document.getElementById('updateModalText');
+                const actions = document.getElementById('updateModalActions');
+                const closeBtn = document.getElementById('closeUpdateModalBtn');
+                const tagSpan = document.getElementById('newVersionTag');
+
+                // Используем функцию сравнения вместо простого !==
+                if (isNewer(currentVersion, latestVersion)) {
+                    if (header) { header.textContent = "🚀 Доступно обновление!"; header.style.color = "#1E90FF"; }
+                    if (text) text.textContent = `Ваша версия: ${currentVersion}. Новая версия: ${latestVersion}`;
+                    if (tagSpan) tagSpan.textContent = latestVersion;
+                    if (actions) actions.style.display = 'flex';
+                    if (closeBtn) closeBtn.style.display = 'none';
+                } else {
+                    if (header) { header.textContent = "✅ У вас последняя версия!"; header.style.color = "#4CAF50"; }
+                    if (text) text.textContent = currentVersion !== latestVersion 
+                        ? `Ваша версия V${currentVersion} новее, чем на GitHub (V${latestVersion}).`
+                        : `Текущая версия V${currentVersion} является актуальной.`;
+                    if (actions) actions.style.display = 'none';
+                    if (closeBtn) closeBtn.style.display = 'block';
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Не удалось проверить обновление.");
+            } finally {
+                checkVersionBtn.textContent = "Проверить последнюю версию";
+                checkVersionBtn.disabled = false;
             }
-        } catch (error) {
-            console.error(error);
-            alert("Не удалось проверить обновление. Проверьте соединение или GitHub API.");
-        } finally {
-            checkVersionBtn.textContent = "Проверить последнюю версию";
-            checkVersionBtn.disabled = false;
-        }
-    });
+        });
+    }
 
-    // Обработка кнопок в модальном окне
-    closeUpdateModalBtn.addEventListener('click', () => updateModal.style.display = 'none');
-    cancelUpdateModalBtn.addEventListener('click', () => updateModal.style.display = 'none');
-    downloadUpdateBtn.addEventListener('click', () => {
+    addEvent('closeUpdateModalBtn', 'click', () => { document.getElementById('updateModal').style.display = 'none'; });
+    addEvent('cancelUpdateModalBtn', 'click', () => { document.getElementById('updateModal').style.display = 'none'; });
+    addEvent('downloadUpdateBtn', 'click', () => {
         chrome.tabs.create({ url: GITHUB_REPO_URL + "/releases/latest" });
-        updateModal.style.display = 'none';
+        document.getElementById('updateModal').style.display = 'none';
     });
 
-
-
+    addEvent('openMeeSwap', 'click', () => {
+        chrome.tabs.create({ url: "https://app.panora.exchange/?ref=V94RDWEH#/swap/aptos?pair=MEE-APT" });
+    });
 
     runUpdateCycle();
 });
