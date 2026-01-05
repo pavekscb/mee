@@ -2,6 +2,8 @@
 const DEFAULT_EXAMPLE_ADDRESS = "0x9ba27fc8a65ba4507fc4cca1b456e119e4730b8d8cfaf72a2a486e6d0825b27b";
 const MEE_COIN_T0_T1 = "0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin";
 const APT_COIN = "0x1::aptos_coin::AptosCoin";
+const MEGA_COIN_TYPE ="0x350f1f65a2559ad37f95b8ba7c64a97c23118856ed960335fce4cd222d5577d3::mega_coin::MEGA";
+let lastMegaBalance = 0;
 
 const UPDATE_INTERVAL_SECONDS = 60;
 const TOKEN_DECIMALS = 8; 
@@ -111,8 +113,10 @@ async function updateWalletLiquidBalances() {
     try {
         const aptRaw = await fetchWalletCoinBalance(currentWalletAddress, APT_COIN);
         const meeRaw = await fetchWalletCoinBalance(currentWalletAddress, MEE_COIN_T0_T1);
+        const megaRaw = await fetchWalletCoinBalance(currentWalletAddress, MEGA_COIN_TYPE);
         lastAptBalance = Number(aptRaw) / 1e8;
         lastMeeBalance = Number(meeRaw) / 1e6;
+        lastMegaBalance = Number(megaRaw) / 1e8;
         renderWalletLines();
     } catch (e) {
         console.error("UI Update error:", e);
@@ -122,6 +126,7 @@ async function updateWalletLiquidBalances() {
 function renderWalletLines() {
     const aptLine = document.getElementById("walletAptLine");
     const meeLine = document.getElementById("walletMeeLine");
+    const megaLine = document.getElementById("walletMegaLine");
     if (!aptLine || !meeLine) return;
 
     let aptText = `APT: ${lastAptBalance.toFixed(8)}`;
@@ -137,6 +142,11 @@ function renderWalletLines() {
         meeText += ` <span style="color:#2E8B57">($${meeUsdPrice.toFixed(6)} / <b>$${meeUsdValue.toFixed(4)}</b>)</span>`;
     }
     meeLine.innerHTML = meeText;
+
+    // Отрисовка MEGA
+    let megaText = `MEGA: ${lastMegaBalance.toFixed(2)}`;
+    // Если в будущем появится цена для MEGA, можно будет добавить расчет USD сюда
+    megaLine.innerHTML = megaText;
 }
 
 // =======================================================
@@ -341,9 +351,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     addEvent('aboutProjectBtn', 'click', () => { document.getElementById('aboutProjectModal').style.display = 'flex'; });
     addEvent('closeAboutProject', 'click', () => { document.getElementById('aboutProjectModal').style.display = 'none'; });
 
-    const contractLabel = document.getElementById('meeContractValue');
-    if (contractLabel) contractLabel.textContent = MEE_COIN_T0_T1;
-    
     addEvent('editWalletBtn', 'click', () => {
         document.getElementById('modalOverlay').style.display = 'flex';
         document.getElementById('newWalletInput').value = currentWalletAddress;
@@ -467,6 +474,100 @@ document.addEventListener('DOMContentLoaded', async () => {
     addEvent('openMeeSwap', 'click', () => {
         chrome.tabs.create({ url: "https://app.panora.exchange/?ref=V94RDWEH#/swap/aptos?pair=MEE-APT" });
     });
+
+    // --- НОВАЯ ЛОГИКА ДЛЯ MEGA COIN & GTA 6 ---
+const MEGA_HARVEST_URL = "https://explorer.aptoslabs.com/account/0x350f1f65a2559ad37f95b8ba7c64a97c23118856ed960335fce4cd222d5577d3/modules/run/mega_coin/harvest?network=mainnet";
+const START_TIME = 1767623400; // 5 Jan 2026
+const END_TIME = 1795075200;   // 19 Nov 2026
+const START_PRICE = 100000;    // 0.001 APT (in Octas)
+const END_PRICE = 10000000;    // 0.1 APT (in Octas)
+
+function updateMegaUI() {
+    const now = Math.floor(Date.now() / 1000);
+    
+    // 1. Расчет цены
+    let currentPriceOctas;
+    if (now >= END_TIME) currentPriceOctas = END_PRICE;
+    else if (now <= START_TIME) currentPriceOctas = START_PRICE;
+    else {
+        currentPriceOctas = START_PRICE + Math.floor((END_PRICE - START_PRICE) * (now - START_TIME) / (END_TIME - START_TIME));
+    }
+    const priceDisplay = (currentPriceOctas / 100000000).toFixed(6);
+    const priceElem = document.getElementById('dynamicPrice');
+    if (priceElem) priceElem.textContent = priceDisplay;
+
+    // 2. Таймер
+    const diff = END_TIME - now;
+    if (diff > 0) {
+        const d = Math.floor(diff / 86400);
+        const h = Math.floor((diff % 86400) / 3600);
+        const m = Math.floor((diff % 3600) / 60);
+        const s = diff % 60;
+        const timerElem = document.getElementById('megaTimer');
+        if (timerElem) timerElem.textContent = `${d}д : ${h}ч : ${m}м : ${s}с`;
+    }
+
+    // 3. Рисуем график
+    drawSmallChart(now);
+}
+
+function drawSmallChart(now) {
+    const canvas = document.getElementById('priceChartCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    // Рисуем линию прогресса
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.9);
+    ctx.lineTo(w, h * 0.1);
+    ctx.stroke();
+
+    // Рисуем заполнение текущего прогресса
+    const progress = (now - START_TIME) / (END_TIME - START_TIME);
+    const currentX = w * progress;
+    const currentY = h * 0.9 - (h * 0.8 * progress);
+
+    ctx.fillStyle = 'rgba(233, 30, 99, 0.2)';
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    ctx.lineTo(0, h * 0.9);
+    ctx.lineTo(currentX, currentY);
+    ctx.lineTo(currentX, h);
+    ctx.fill();
+
+    // Точка текущей цены
+    ctx.fillStyle = '#E91E63';
+    ctx.beginPath();
+    ctx.arc(currentX, currentY, 4, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// Запуск таймера обновления
+setInterval(updateMegaUI, 1000);
+
+// Обработчики кнопок
+addEvent('gtaBannerBtn', 'click', () => {
+    const modal = document.getElementById('gtaModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        updateMegaUI();
+    }
+});
+
+addEvent('proceedGtaBtn', 'click', () => {
+    chrome.tabs.create({ url: MEGA_HARVEST_URL });
+});
+
+addEvent('cancelGtaBtn', 'click', () => {
+    document.getElementById('gtaModal').style.display = 'none';
+});
+
 
     runUpdateCycle();
 });
