@@ -5,13 +5,12 @@
     <style>
 
         body {
-            width: 400px; 
-            min-height: 250px; 
+            width: 450px;
+            min-height: 500px;; 
             font-family: Arial, sans-serif;
             padding: 10px;
             margin: 0;
-            overflow-x: hidden;
-            overflow-y: hidden;
+            overflow-y: auto;  
             position: relative;
         }
 
@@ -84,21 +83,21 @@
             display: flex;
             justify-content: space-between;
         }
-        .info-btn {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: none;
-    background: #FF7043;
-    color: white;
-    font-weight: bold;
+.info-btn {
     cursor: pointer;
-    margin: 6px 0;
-     display: flex;           
-    align-items: center;       
-    justify-content: center;   
-
-    padding: 0;                
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    
+    width: 18px;            /* Фиксированная ширина */
+    height: 18px;           /* Фиксированная высота */
+    line-height: 16px;      /* Центровка текста по вертикали */
+    padding: 0;             /* Убираем внутренние отступы */
+    flex-shrink: 0;         /* Запрещаем кнопке сжиматься или растягиваться */
+    display: inline-flex;   /* Включаем гибкую центровку */
+    align-items: center;    /* Центр по вертикали */
+    justify-content: center;/* Центр по горизонтали */
+    font-size: 12px;
 }
 
 .info-btn:hover {
@@ -135,7 +134,62 @@
     cursor: pointer;
     margin: 6px 40px 6px 6px; 
 }
+.balance-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr); /* 3 колонки */
+        gap: 8px;
+        margin-top: 10px;
+        border-top: 1px solid #eee;
+        padding-top: 10px;
+    }
+    .balance-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    .coin-name {
+        font-size: 0.75em;
+        font-weight: bold;
+        color: #555;
+        margin-bottom: 2px;
+    }
+    .coin-amount {
+        font-size: 0.85em;
+        color: #000;
+        white-space: nowrap;
+    }
+    .coin-usd {
+        font-size: 0.75em;
+        color: #2E8B57;
+        font-weight: bold;
+    }
+    .coin-rate {
+        font-size: 0.65em;
+        color: #888;
+        margin-top: 1px;
+    }
 
+.neon-title {
+    color: #00ffcc; /* Тот самый неоновый зеленый/циан */
+    font-family: 'Arial Black', sans-serif;
+    margin-top: 0;
+    text-align: center;
+    text-transform: uppercase;
+    /* Эффект свечения: наслоение нескольких теней */
+    text-shadow: 
+        0 0 7px rgba(0, 255, 204, 0.7),
+        0 0 15px rgba(0, 255, 204, 0.5),
+        0 0 21px rgba(0, 255, 204, 0.2);
+    letter-spacing: 1px;
+    animation: neon-pulse 2s infinite alternate; /* Добавим легкое "дыхание" свету */
+}
+
+/* Анимация пульсации (опционально) */
+@keyframes neon-pulse {
+    from { opacity: 0.9; text-shadow: 0 0 7px rgba(0, 255, 204, 0.7); }
+    to { opacity: 1; text-shadow: 0 0 12px rgba(0, 255, 204, 0.9); }
+}
 
     </style>
 </head>
@@ -147,16 +201,30 @@
         <div class="section">
             <p id="walletAddressDisplay" style="margin: 0; font-size: 1.1em;">Кошелек: Загрузка...</p>
             
-           <div id="walletLiquidBalances" class="wallet-sub-balances">
-                <div id="walletAptLine"></div>
-               <div id="walletMeeLine"></div>
-               <div id="walletMegaLine">MEGA: 0.00</div>
-           </div>
+           <div id="walletLiquidBalances" class="balance-grid">
+    <div class="balance-item" id="walletAptLine">
+        <span class="coin-name">APT</span>
+        <span class="coin-amount">0.00</span>
+        <span class="coin-usd">$0.00</span>
+    </div>
+    <div class="balance-item" id="walletMeeLine">
+        <span class="coin-name">MEE</span>
+        <span class="coin-amount">0.00</span>
+        <span class="coin-usd">$0.00</span>
+    </div>
+    <div class="balance-item" id="walletMegaLine">
+        <span class="coin-name">MEGA</span>
+        <span class="coin-amount">0.00</span>
+        <span class="coin-usd">$0.00</span>
+    </div>
+</div>
 
 
             <button id="editWalletBtn">Сменить кошелек</button>
         </div>
         
+        <!--
+
         <div class="section" style="background-color: #e6f7ff; border-color: #8ac0e6; display: flex; align-items: center; justify-content: space-between;">
             <div style="flex-grow: 1;">
                 <label style="display: block; font-weight: bold; margin-bottom: 5px;">Баланс $MEE:</label>
@@ -164,7 +232,20 @@
             </div>
             <button id="addMeeBtn" style="background-color: #1E90FF; color: white; width: 120px; margin: 0; flex-shrink: 0;">Добавить $MEE</button>
         </div>
-        
+    -->
+
+<div class="section" style="background-color: #e6f7ff; border-color: #8ac0e6; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+    <div style="flex-grow: 1;">
+        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Баланс $MEE:</label>
+        <span id="meeBalance" style="font-size: 1.1em;">0,00000000 $MEE</span>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 8px; flex-shrink: 0;">
+        <button id="addMeeBtn" style="background-color: #1E90FF; color: white; padding: 8px 12px; margin: 0; font-size: 0.85em; font-weight: bold;">Добавить $MEE</button>
+        <button id="unstakeBtn" style="background-color: #DC143C; color: white; padding: 8px 12px; margin: 0; font-size: 0.85em; font-weight: bold;">x</button>
+    </div>
+</div>
+
+
         <div class="section" style="background-color: #e6ffe6; border-color: #00cc00; display: flex; align-items: center; justify-content: space-between;">
             <div style="flex-grow: 1;">
                 <label style="display: block; font-weight: bold; margin-bottom: 5px;">
@@ -178,6 +259,8 @@
             <button id="harvestBtn" style="background-color: #4CAF50; color: white; width: 120px; margin: 0; flex-shrink: 0;">Забрать награду</button>
         </div>
         
+       <!--
+
         <div class="section" style="background-color: #ffe6e6; border-color: #ff9999; display: flex; align-items: center; justify-content: space-between;">
             <div style="flex-grow: 1;">
                 <label style="display: block; font-weight: bold; margin-bottom: 5px;">Вывод $MEE из стейкинга:</label>
@@ -185,6 +268,8 @@
             <button id="unstakeBtn" style="background-color: #DC143C; color: white; width: 120px; margin: 0; flex-shrink: 0;">Забрать $MEE</button>
         </div>
         
+    -->
+
         <div class="section" style="padding: 0; border: none; cursor: pointer;" id="gtaBannerBtn">
             <img src="icons/GTA.gif" alt="Get GTA" style="width: 100%; border-radius: 5px; display: block;">
         </div>
@@ -214,6 +299,7 @@
             </span>
         </div>
 
+        
         <button id="saveNewWalletBtn">Сохранить</button>
         <button id="cancelNewWalletBtn" style="background-color: #ccc;">Отмена</button>
     </div>
@@ -232,7 +318,7 @@
             </p>
             
             <p style="margin-top: 15px;">
-                3. Нажмите <span style="background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; font-family: monospace; color: #333;">RUN</span> и подпишите транзакцию.
+                3. Нажмите <span style="background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; font-family: monospace; color: #333;">EXECUTE</span> и подпишите транзакцию.
             </p>
             
             <p style="font-weight: bold; color: #4CAF50; margin-top: 25px; font-size: 1.2em;">
@@ -272,7 +358,7 @@
             </p>
             
             <p style="margin-top: 15px;">
-                4. Нажмите <span style="background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; font-family: monospace; color: #333;">RUN</span> и подпишите транзакцию.
+                4. Нажмите <span style="background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; font-family: monospace; color: #333;">EXECUTE</span> и подпишите транзакцию.
             </p>
             
             <p style="font-weight: bold; color: #4CAF50; margin-top: 25px; font-size: 1.2em;">
@@ -319,7 +405,7 @@
             </p>
             
             <p style="margin-top: 15px; font-weight: bold;">
-                5. Нажмите <span style="background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; font-family: monospace; color: #333;">RUN</span> и подпишите транзакцию.
+                5. Нажмите <span style="background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; font-family: monospace; color: #333;">EXECUTE</span> и подпишите транзакцию.
             </p>
             
             <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -335,7 +421,7 @@
 
 <div class="section" style="margin-top: 15px; padding: 5px; border: none; text-align: center;">
     <span style="font-size: 0.8em; color: #888;">
-        Версия V<span id="currentVersion">1.0.4</span> | 
+        Версия V<span id="currentVersion">1.0.5</span> | 
         <button id="checkVersionBtn" style="background: none; border: none; padding: 0; margin: 0; color: #1E90FF; text-decoration: underline; cursor: pointer; font-size: 1em; font-weight: normal;">
             Проверить последнюю версию
         </button>
@@ -345,7 +431,7 @@
 <div id="updateModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 2000;">
     <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 350px; text-align: center;">
         <h3 id="updateModalHeader" style="margin-top: 0; color: #4CAF50;">✅ У вас последняя версия!</h3>
-        <p id="updateModalText" style="font-size: 1.1em;">Текущая версия: V1.0.4</p>
+        <p id="updateModalText" style="font-size: 1.1em;">Текущая версия: V1.0.5</p>
         <div id="updateModalActions" style="display: none; flex-direction: column; gap: 10px; margin-top: 20px;">
             <button id="downloadUpdateBtn" style="padding: 10px; background-color: #1E90FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
                 Скачать V<span id="newVersionTag"></span>
@@ -469,7 +555,7 @@
 
 <div id="gtaModal" class="modal-overlay" style="z-index: 2005; display: none;">
     <div class="modal" style="text-align: center; border: 2px solid #E91E63; background: #121212; color: white; max-width: 360px; padding: 20px;">
-        <h3 style="color:#E91E63; font-family: 'Arial Black', sans-serif; margin-top: 0;">🚀 MEGA EVENT: GTA 6</h3>
+        <h3 class="neon-title">🚀 MEGA EVENT: GTA 6</h3>
         
         <div id="megaTimer" style="background: #1e1e1e; padding: 8px; border-radius: 6px; margin: 10px 0; font-weight: bold; color: #FFD700; border: 1px solid #333;">
             00д : 00ч : 00м : 00с
@@ -477,10 +563,14 @@
 
         <p style="font-size: 0.9em; margin: 10px 0;">Текущая цена: <span id="dynamicPrice" style="color: #00E5FF; font-weight: bold; font-size: 1.2em;">0.001</span> <b>APT</b></p>
 
-        <div style="position: relative; height: 80px; background: #1a1a1a; border-radius: 4px; margin: 15px 0; border: 1px solid #333; overflow: hidden;">
+        <p style="margin: 5px 0; font-size: 0.85em; color: #888;">
+        Конечная (19 ноября 2026): <b style="color: #fff;">0.1 APT</b>
+    </p>
+
+        <div style="position: relative; height: 80px; background: #1a1a1a; border-radius: 4px; margin: 15px 0; border: 1px solid #6f71ee; overflow: hidden;">
             <canvas id="priceChartCanvas" width="320" height="80"></canvas>
-            <div style="position: absolute; top: 2px; left: 5px; font-size: 10px; color: #666;">0.001 APT</div>
-            <div style="position: absolute; top: 2px; right: 5px; font-size: 10px; color: #E91E63;">0.1 APT</div>
+            <div style="position: absolute; top: 2px; left: 5px; font-size: 10px; color: #33ff00;">0.001 APT</div>
+            <div style="position: absolute; top: 2px; right: 5px; font-size: 10px; color: #00ff59;">0.1 APT</div>
         </div>
 
         <p style="font-size: 0.8em; color: #aaa; margin-bottom: 20px;">
@@ -489,7 +579,7 @@
 
 <div style="font-size: 0.9em; color: #eee; line-height: 1.5; border-left: 3px solid #E91E63; padding-left: 10px;">
         🔥 Нажмите <span style="background: #E91E63; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold;">ЗАБРАТЬ $MEGA</span>, 
-        мгновенно подключите кошелек <u>Petra</u>, жмите ⚡<b>RUN</b> и подтвердите транзакцию.
+        мгновенно подключите кошелек <u>Petra</u>, жмите ⚡<b>EXECUTE</b> и подтвердите транзакцию.
         <br><br>
         ✨ <span style="color: #00E5FF; font-weight: bold;">Поздравляем!</span> Теперь вы — <u>ранний холдер</u> эксклюзивной монеты <b>$MEGA</b>! 💎
         <br><br>
