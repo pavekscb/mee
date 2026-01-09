@@ -1,13 +1,13 @@
 {
     "manifest_version": 3,
-    "name": "MEE Aptos Staking Monitor",
-    "version": "1.0.4",
+    "name": "MEE MEGA Aptos Staking Monitor",
+    "version": "1.0.5",
     "description": "Монитор стейкинга $MEE на Aptos. Отображает баланс и награду в реальном времени.",
     "permissions": ["storage"],
     
     "action": {
         "default_popup": "popup.html",
-        "default_title": "MEE Aptos Staking Monitor",
+        "default_title": "MEE MEGA Aptos Staking Monitor",
         "default_icon": {
             "16": "icons/icon16.png",
             "48": "icons/icon48.png",
@@ -21,4 +21,3 @@
         "128": "icons/icon128.png"
     }
 }
-
