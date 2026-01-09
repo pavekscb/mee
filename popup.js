@@ -24,6 +24,7 @@ const URL_SWAP = "https://aptos.pancakeswap.finance/swap?outputCurrency=0x1%3A%3
 const URL_SWAP_EARNIUM = "https://app.panora.exchange/?ref=V94RDWEH#/swap/aptos?pair=MEE-APT";
 
 const URL_SUPPORT = "https://t.me/cripto_karta";
+let cometProgress = 0;
 
 // --- КОНСТАНТЫ: ПРОВЕРКА ВЕРСИИ ---
 const GITHUB_RELEASES_API = "https://api.github.com/repos/pavekscb/mee/releases/latest";
@@ -127,25 +128,48 @@ function renderWalletLines() {
     const aptLine = document.getElementById("walletAptLine");
     const meeLine = document.getElementById("walletMeeLine");
     const megaLine = document.getElementById("walletMegaLine");
-    if (!aptLine || !meeLine) return;
+    
+    // Простая проверка: если элементов нет на странице, ничего не делаем
+    if (!aptLine || !meeLine || !megaLine) return;
 
-    let aptText = `APT: ${lastAptBalance.toFixed(8)}`;
+    // 1. Отрисовка APT
+    let aptText = `<b>$APT: ${lastAptBalance.toFixed(8)} </b>`;
     if (aptUsdPrice !== null) {
         const aptUsdValue = lastAptBalance * aptUsdPrice;
         aptText += ` <span style="color:#2E8B57">($${aptUsdPrice.toFixed(2)} / <b>$${aptUsdValue.toFixed(2)}</b>)</span>`;
     }
     aptLine.innerHTML = aptText;
 
-    let meeText = `MEE: ${lastMeeBalance.toFixed(6)}`;
+    // 2. Отрисовка MEE
+    let meeText = `<b>$MEE: ${lastMeeBalance.toFixed(6)} </b>`;
     if (meeUsdPrice !== null) {
         const meeUsdValue = lastMeeBalance * meeUsdPrice;
         meeText += ` <span style="color:#2E8B57">($${meeUsdPrice.toFixed(6)} / <b>$${meeUsdValue.toFixed(4)}</b>)</span>`;
     }
     meeLine.innerHTML = meeText;
 
-    // Отрисовка MEGA
-    let megaText = `MEGA: ${lastMegaBalance.toFixed(2)}`;
-    // Если в будущем появится цена для MEGA, можно будет добавить расчет USD сюда
+    // 3. Отрисовка MEGA (Расчет прямо здесь, чтобы не было ошибок)
+    const now = Math.floor(Date.now() / 1000);
+    const START_TIME = 1767623400; 
+    const END_TIME = 1795075200;   
+    const START_PRICE = 100000;    
+    const END_PRICE = 10000000;    
+
+    let currentPriceOctas;
+    if (now >= END_TIME) currentPriceOctas = END_PRICE;
+    else if (now <= START_TIME) currentPriceOctas = START_PRICE;
+    else {
+        currentPriceOctas = START_PRICE + Math.floor((END_PRICE - START_PRICE) * (now - START_TIME) / (END_TIME - START_TIME));
+    }
+    
+    const megaPriceApt = currentPriceOctas / 100000000;
+    let megaText = `<b>$MEGA: ${lastMegaBalance.toFixed(2)} </b>`;
+    
+    if (aptUsdPrice !== null) {
+        const megaUsdPrice = megaPriceApt * aptUsdPrice;
+        const totalMegaUsdValue = lastMegaBalance * megaUsdPrice;
+        megaText += ` <span style="color:#2E8B57">($${megaPriceApt.toFixed(6)} / <b>$${totalMegaUsdValue.toFixed(4)}</b>)</span>`;
+    }
     megaLine.innerHTML = megaText;
 }
 
@@ -284,7 +308,11 @@ function updateLabels(results) {
             .replace(/\s/g, ' ').replace('.', ',') + ' $MEE' + usdText;
     }
 
-    if (rewardLabel) rewardLabel.textContent = formatMeeValue(meeCurrentReward) + ' $MEE';
+    if (rewardLabel) {
+        const rewardFloat = Number(meeCurrentReward) / (10 ** TOKEN_DECIMALS);
+        const rewardUsd = meeUsdPrice ? ` <span style="color:#2E8B57; font-size:0.9em;">($${(rewardFloat * meeUsdPrice).toFixed(8)})</span>` : "";
+        rewardLabel.innerHTML = formatMeeValue(meeCurrentReward) + ' $MEE' + rewardUsd;
+    }
     if (rateLabel) rateLabel.textContent = `Скорость: ${meeRatePerSec.toFixed(12).replace('.', ',')} MEE/сек`;
     if (tickerLabel) tickerLabel.textContent = ANIMATION_FRAMES[currentFrameIndex];
 
@@ -304,7 +332,11 @@ function startSimulation() {
         meeCurrentReward += addedRewardRaw; 
         const rewardLabel = document.getElementById('meeReward');
         const tickerLabel = document.getElementById('rewardTicker');
-        if (rewardLabel) rewardLabel.textContent = formatMeeValue(meeCurrentReward) + ' $MEE';
+        if (rewardLabel) {
+            const rewardFloat = Number(meeCurrentReward) / (10 ** TOKEN_DECIMALS);
+            const rewardUsd = meeUsdPrice ? ` <span style="color:#2E8B57; font-size:0.9em;">($${(rewardFloat * meeUsdPrice).toFixed(8)})</span>` : "";
+            rewardLabel.innerHTML = formatMeeValue(meeCurrentReward) + ' $MEE' + rewardUsd;
+        }
         currentFrameIndex = (currentFrameIndex + 1) % ANIMATION_FRAMES.length;
         if (tickerLabel) tickerLabel.textContent = ANIMATION_FRAMES[currentFrameIndex];
     }, 1000); 
@@ -356,6 +388,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('newWalletInput').value = currentWalletAddress;
     });
     addEvent('saveNewWalletBtn', 'click', handleSaveWallet);
+
+
+
+    
     addEvent('cancelNewWalletBtn', 'click', () => document.getElementById('modalOverlay').style.display = 'none');
     
     addEvent('addMeeBtn', 'click', () => {
@@ -507,8 +543,8 @@ function updateMegaUI() {
         if (timerElem) timerElem.textContent = `${d}д : ${h}ч : ${m}м : ${s}с`;
     }
 
-    // 3. Рисуем график
-    drawSmallChart(now);
+    renderWalletLines();
+    
 }
 
 function drawSmallChart(now) {
@@ -519,33 +555,90 @@ function drawSmallChart(now) {
     const h = canvas.height;
     
     ctx.clearRect(0, 0, w, h);
-    
-    // Рисуем линию прогресса
-    ctx.strokeStyle = '#333';
+    ctx.fillStyle = '#0a0e14'; 
+    ctx.fillRect(0, 0, w, h);
+
+    const paddingX = 45; 
+    const bottomPadding = 25;
+    const chartWidth = w - (paddingX * 2);
+    const chartHeight = h - bottomPadding;
+
+    // 1. Сетка (тусклая)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        let x = paddingX + (chartWidth / 4) * i;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, chartHeight); ctx.stroke();
+        let y = (chartHeight / 4) * i;
+        ctx.beginPath(); ctx.moveTo(paddingX, y); ctx.lineTo(w - paddingX, y); ctx.stroke();
+    }
+
+    // 2. Расчет прогресса
+    const realProgress = Math.min(Math.max((now - START_TIME) / (END_TIME - START_TIME), 0), 1);
+    
+    // Двигаем комету от реальной цены до конца
+    if (cometProgress < realProgress || cometProgress >= 1) {
+        cometProgress = realProgress;
+    }
+    cometProgress += 0.003; // Скорость кометы (можно менять)
+
+    const getX = (p) => paddingX + (chartWidth * p);
+    const getY = (p) => (chartHeight * 0.9) - (chartHeight * 0.8 * p);
+
+    // 3. Линия графика (основная траектория)
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.2)';
+    ctx.setLineDash([5, 5]); // Делаем её пунктирной для стиля
     ctx.beginPath();
-    ctx.moveTo(0, h * 0.9);
-    ctx.lineTo(w, h * 0.1);
+    ctx.moveTo(paddingX, chartHeight * 0.9);
+    ctx.lineTo(paddingX + chartWidth, chartHeight * 0.1);
+    ctx.stroke();
+    ctx.setLineDash([]); // Сброс пунктира
+
+    // 4. ЭФФЕКТ КОМЕТЫ (Шлейф)
+    const gradient = ctx.createLinearGradient(getX(realProgress), getY(realProgress), getX(cometProgress), getY(cometProgress));
+    gradient.addColorStop(0, 'transparent');
+    gradient.addColorStop(1, 'rgba(0, 255, 204, 0.4)');
+    
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(getX(realProgress), getY(realProgress));
+    ctx.lineTo(getX(cometProgress), getY(cometProgress));
     ctx.stroke();
 
-    // Рисуем заполнение текущего прогресса
-    const progress = (now - START_TIME) / (END_TIME - START_TIME);
-    const currentX = w * progress;
-    const currentY = h * 0.9 - (h * 0.8 * progress);
-
-    ctx.fillStyle = 'rgba(233, 30, 99, 0.2)';
+    // 5. Летящая голова кометы (Импульс)
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#00ffcc';
+    ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.moveTo(0, h);
-    ctx.lineTo(0, h * 0.9);
-    ctx.lineTo(currentX, currentY);
-    ctx.lineTo(currentX, h);
+    ctx.arc(getX(cometProgress), getY(cometProgress), 3, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 0;
 
-    // Точка текущей цены
-    ctx.fillStyle = '#E91E63';
+    // 6. Реальная точка цены (Пульсирующая)
+    const pulse = Math.sin(Date.now() / 300) * 2;
+    ctx.shadowBlur = 10 + pulse;
+    ctx.shadowColor = '#00ffcc';
+    ctx.fillStyle = '#00ffcc';
     ctx.beginPath();
-    ctx.arc(currentX, currentY, 4, 0, Math.PI * 2);
+    ctx.arc(getX(realProgress), getY(realProgress), 5 + pulse/2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Цена над реальной точкой
+    const realPrice = (0.001 + (0.1 - 0.001) * realProgress).toFixed(6);
+    ctx.fillStyle = '#00ffcc';
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(realPrice + " APT", getX(realProgress), getY(realProgress) - 15);
+
+    // 7. Месяцы (внизу)
+    const months = ['Янв', 'Мар', 'Май', 'Июл', 'Сен', 'Ноя'];
+    ctx.fillStyle = '#666'; ctx.font = '10px Arial';
+    for (let i = 0; i < months.length; i++) {
+        let x = paddingX + (chartWidth / (months.length - 1)) * i;
+        ctx.fillText(months[i], x, h - 5);
+    }
 }
 
 // Запуск таймера обновления
@@ -568,6 +661,14 @@ addEvent('cancelGtaBtn', 'click', () => {
     document.getElementById('gtaModal').style.display = 'none';
 });
 
+// Функция для плавной анимации (60 кадров в секунду)
+function animate() {
+    const now = Date.now() / 1000;
+    drawSmallChart(now);
+    requestAnimationFrame(animate); // Зацикливаем перерисовку
+}
 
-    runUpdateCycle();
+// Запускаем анимацию сразу после загрузки
+animate();
+runUpdateCycle();
 });
