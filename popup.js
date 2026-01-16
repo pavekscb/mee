@@ -4,6 +4,7 @@ const MEE_COIN_T0_T1 = "0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad
 const APT_COIN = "0x1::aptos_coin::AptosCoin";
 const MEGA_COIN_TYPE ="0x350f1f65a2559ad37f95b8ba7c64a97c23118856ed960335fce4cd222d5577d3::mega_coin::MEGA";
 let lastMegaBalance = 0;
+let currentAptPrice = 0;
 
 const UPDATE_INTERVAL_SECONDS = 60;
 const TOKEN_DECIMALS = 8; 
@@ -31,6 +32,59 @@ const GITHUB_RELEASES_API = "https://api.github.com/repos/pavekscb/mee/releases/
 const GITHUB_REPO_URL = "https://github.com/pavekscb/mee"; 
 let currentVersion = chrome.runtime.getManifest().version; 
 // ------------------------------------
+// проверка обновления
+async function checkForUpdate(auto = false) {
+    const checkVersionBtn = document.getElementById('checkVersionBtn');
+    if (!auto && checkVersionBtn) {
+        checkVersionBtn.textContent = "Проверка...";
+        checkVersionBtn.disabled = true;
+    }
+    try {
+        const response = await fetch(GITHUB_RELEASES_API);
+        if (!response.ok) throw new Error("Ошибка сети");
+        const data = await response.json();
+        
+        // Очищаем тег от букв 'v', оставляем только цифры и точки
+        const latestVersion = data.tag_name.replace(/[vV]/g, '');
+        
+        const updateModal = document.getElementById('updateModal');
+        const header = document.getElementById('updateModalHeader');
+        const text = document.getElementById('updateModalText');
+        const actions = document.getElementById('updateModalActions');
+        const closeBtn = document.getElementById('closeUpdateModalBtn');
+        const tagSpan = document.getElementById('newVersionTag');
+
+        // Используем функцию сравнения вместо простого !==
+        if (isNewer(currentVersion, latestVersion)) {
+            if (header) { header.textContent = "🚀 Доступно обновление!"; header.style.color = "#1E90FF"; }
+            if (text) text.textContent = `Ваша версия: ${currentVersion}. Новая версия: ${latestVersion}`;
+            if (tagSpan) tagSpan.textContent = latestVersion;
+            if (actions) actions.style.display = 'flex';
+            if (closeBtn) closeBtn.style.display = 'none';
+            if (updateModal) updateModal.style.display = 'flex';  // Всегда показываем, если обновление
+        } else {
+            if (!auto) {  // Для автоматической — не показываем "актуально"
+                if (header) { header.textContent = "✅ У вас последняя версия!"; header.style.color = "#4CAF50"; }
+                if (text) text.textContent = currentVersion !== latestVersion 
+                    ? `Ваша версия V${currentVersion} новее, чем на GitHub (V${latestVersion}).`
+                    : `Текущая версия V${currentVersion} является актуальной.`;
+                if (actions) actions.style.display = 'none';
+                if (closeBtn) closeBtn.style.display = 'block';
+                if (updateModal) updateModal.style.display = 'flex';
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        if (!auto) alert("Не удалось проверить обновление.");
+    } finally {
+        if (!auto && checkVersionBtn) {
+            checkVersionBtn.textContent = "Проверить последнюю версию";
+            checkVersionBtn.disabled = false;
+        }
+    }
+}
+
+// -------------
 
 let currentWalletAddress = DEFAULT_EXAMPLE_ADDRESS;
 let meeCurrentReward = 0n;
@@ -63,6 +117,7 @@ async function fetchAptPrice() {
     try {
         const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=aptos&vs_currencies=usd");
         const data = await res.json();
+        currentAptPrice = data.aptos.usd;
         return data.aptos.usd;
     } catch (e) {
         console.error("APT price error", e);
@@ -163,12 +218,12 @@ function renderWalletLines() {
     }
     
     const megaPriceApt = currentPriceOctas / 100000000;
-    let megaText = `<b>$MEGA: ${lastMegaBalance.toFixed(2)} </b>`;
+    let megaText = `<b>$MEGA: ${lastMegaBalance.toFixed(8)} </b>`;
     
     if (aptUsdPrice !== null) {
         const megaUsdPrice = megaPriceApt * aptUsdPrice;
         const totalMegaUsdValue = lastMegaBalance * megaUsdPrice;
-        megaText += ` <span style="color:#2E8B57">($${megaPriceApt.toFixed(6)} / <b>$${totalMegaUsdValue.toFixed(4)}</b>)</span>`;
+        megaText += ` <span style="color:#2E8B57">(${megaPriceApt.toFixed(6) }  / <b>$${totalMegaUsdValue.toFixed(8)}</b>)</span>`;
     }
     megaLine.innerHTML = megaText;
 }
@@ -282,7 +337,7 @@ function updateLabels(results) {
 
     if (walletLabel) {
         const displayAddress = currentWalletAddress === DEFAULT_EXAMPLE_ADDRESS 
-            ? `${currentWalletAddress.substring(0, 6)}... (ПРИМЕР)`
+            ? `${currentWalletAddress.substring(0, 6)}... (ПРИМЕР) `
             : `${currentWalletAddress.substring(0, 6)}...${currentWalletAddress.substring(currentWalletAddress.length - 4)}`;
         walletLabel.textContent = `Кошелек: ${displayAddress}`;
         walletLabel.style.color = currentWalletAddress === DEFAULT_EXAMPLE_ADDRESS ? 'darkorange' : 'purple';
@@ -371,6 +426,29 @@ async function runUpdateCycle() {
 document.addEventListener('DOMContentLoaded', async () => {
     await loadWalletAddress();
 
+
+
+
+
+   // Открытие окна справки $MEGA
+const megaInfoBtn = document.getElementById('megaMiningInfoBtn');
+if (megaInfoBtn) {
+    megaInfoBtn.addEventListener('click', () => {
+        document.getElementById('megaMiningInfoModal').style.display = 'flex';
+    });
+}
+
+// Закрытие окна справки $MEGA
+const closeMegaBtn = document.getElementById('closeMegaInfo');
+if (closeMegaBtn) {
+    closeMegaBtn.addEventListener('click', () => {
+        document.getElementById('megaMiningInfoModal').style.display = 'none';
+    });
+}
+
+
+
+
     // --- БЕЗОПАСНАЯ ПРИВЯЗКА СОБЫТИЙ ---
     const addEvent = (id, event, fn) => {
         const el = document.getElementById(id);
@@ -388,10 +466,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('newWalletInput').value = currentWalletAddress;
     });
     addEvent('saveNewWalletBtn', 'click', handleSaveWallet);
-
-
-
-    
     addEvent('cancelNewWalletBtn', 'click', () => document.getElementById('modalOverlay').style.display = 'none');
     
     addEvent('addMeeBtn', 'click', () => {
@@ -454,51 +528,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- ЛОГИКА ПРОВЕРКИ ВЕРСИИ (УЛУЧШЕННАЯ) ---
     const checkVersionBtn = document.getElementById('checkVersionBtn');
-    if (checkVersionBtn) {
-        checkVersionBtn.addEventListener('click', async () => {
-            checkVersionBtn.textContent = "Проверка...";
-            checkVersionBtn.disabled = true;
-            try {
-                const response = await fetch(GITHUB_RELEASES_API);
-                if (!response.ok) throw new Error("Ошибка сети");
-                const data = await response.json();
-                
-                // Очищаем тег от букв 'v', оставляем только цифры и точки
-                const latestVersion = data.tag_name.replace(/[vV]/g, '');
-                
-                const updateModal = document.getElementById('updateModal');
-                if (updateModal) updateModal.style.display = 'flex';
-
-                const header = document.getElementById('updateModalHeader');
-                const text = document.getElementById('updateModalText');
-                const actions = document.getElementById('updateModalActions');
-                const closeBtn = document.getElementById('closeUpdateModalBtn');
-                const tagSpan = document.getElementById('newVersionTag');
-
-                // Используем функцию сравнения вместо простого !==
-                if (isNewer(currentVersion, latestVersion)) {
-                    if (header) { header.textContent = "🚀 Доступно обновление!"; header.style.color = "#1E90FF"; }
-                    if (text) text.textContent = `Ваша версия: ${currentVersion}. Новая версия: ${latestVersion}`;
-                    if (tagSpan) tagSpan.textContent = latestVersion;
-                    if (actions) actions.style.display = 'flex';
-                    if (closeBtn) closeBtn.style.display = 'none';
-                } else {
-                    if (header) { header.textContent = "✅ У вас последняя версия!"; header.style.color = "#4CAF50"; }
-                    if (text) text.textContent = currentVersion !== latestVersion 
-                        ? `Ваша версия V${currentVersion} новее, чем на GitHub (V${latestVersion}).`
-                        : `Текущая версия V${currentVersion} является актуальной.`;
-                    if (actions) actions.style.display = 'none';
-                    if (closeBtn) closeBtn.style.display = 'block';
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Не удалось проверить обновление.");
-            } finally {
-                checkVersionBtn.textContent = "Проверить последнюю версию";
-                checkVersionBtn.disabled = false;
-            }
-        });
-    }
+if (checkVersionBtn) {
+    checkVersionBtn.addEventListener('click', () => checkForUpdate(false));
+}
 
     addEvent('closeUpdateModalBtn', 'click', () => { document.getElementById('updateModal').style.display = 'none'; });
     addEvent('cancelUpdateModalBtn', 'click', () => { document.getElementById('updateModal').style.display = 'none'; });
@@ -671,4 +703,257 @@ function animate() {
 // Запускаем анимацию сразу после загрузки
 animate();
 runUpdateCycle();
+checkForUpdate(true);  // Автоматическая проверка при запуске
 });
+
+
+///////////////// MEGA 
+
+
+// --- MEGA FIXED LOGIC (SINC WITH LEDGER) ---
+
+const MEGA_POOL_ADDRESS = "0x350f1f65a2559ad37f95b8ba7c64a97c23118856ed960335fce4cd222d5577d3";
+const MEGA_STAKING_MODULE = `${MEGA_POOL_ADDRESS}::mega_coin`;
+const MEGA_STAKE_RESOURCE = `${MEGA_STAKING_MODULE}::StakePosition`; 
+let megaUnlockTime = 0n;
+
+const MEGA_APY = 15n; 
+const SECONDS_IN_YEAR = 31536000n;
+
+let megaCurrentReward = 0n;
+let megaStakedAmountRaw = 0n;
+let megaLastUpdate = 0n;
+let megaNetworkTimeOffset = 0n; // Разница между временем ПК и временем сети
+
+// ←─────── ДОБАВЛЕНО ────────
+let lastMegaRewardUsd = 0;     // глобальная переменная для хранения USD наград
+
+// Функция для создания "зеленого" текста долларов
+function formatUsdGreen(amount, decimals = 2) {
+    // Используем переданное количество знаков (decimals)
+    return ` <span style="color: #228B22; font-weight: bold;">($${amount.toFixed(decimals)})</span>`;
+}
+
+async function runMegaUpdateCycle() {
+    try {
+        const stakeUrl = `${APTOS_LEDGER_URL}/accounts/${currentWalletAddress}/resource/${encodeURIComponent(MEGA_STAKE_RESOURCE)}`;
+        
+        const [ledgerRes, stakeRes] = await Promise.all([
+            fetch(APTOS_LEDGER_URL).then(r => r.json()).catch(() => null),
+            fetch(stakeUrl).then(r => r.ok ? r.json() : null).catch(() => null)
+        ]);
+
+        // КОРРЕКЦИЯ ВРЕМЕНИ СЕТИ (НОВОЕ: рассчитываем offset на основе ledger_timestamp)
+        if (ledgerRes && ledgerRes.ledger_timestamp) {
+            const ledgerTimeSec = BigInt(Math.floor(parseInt(ledgerRes.ledger_timestamp) / 1000000)); // микросекунды -> секунды
+            const localTimeSec = BigInt(Math.floor(Date.now() / 1000));
+            megaNetworkTimeOffset = ledgerTimeSec - localTimeSec; // Может быть положительным или отрицательным
+        }
+
+        if (stakeRes && stakeRes.data) {
+            // 1. Считываем данные из блокчейна
+            megaStakedAmountRaw = BigInt(stakeRes.data.amount || 0);
+            megaLastUpdate = BigInt(stakeRes.data.last_update || 0);
+            megaUnlockTime = BigInt(stakeRes.data.unlock_time || 0);
+            
+            // Сбрасываем локальную награду, так как при stake_all она ушла в тело стейка (amount)
+            megaCurrentReward = 0n; 
+            
+            const minedMega = Number(megaStakedAmountRaw) / 100000000; // Майнинг (22)
+            const walletMega = lastMegaBalance || 0;                   // Кошелек (1)
+            const totalMega = minedMega + walletMega;                  // Итого (23)
+
+            const megaBalanceLabel = document.getElementById('megaBalance');
+            if (megaBalanceLabel) {
+                const START_TIME = 1767623400;
+                const END_TIME = 1795075200;
+                const now = Math.floor(Date.now() / 1000);
+                const progress = Math.max(0, Math.min(1, (now - START_TIME) / (END_TIME - START_TIME)));
+                const priceInApt = 0.001 + (0.1 - 0.001) * progress;
+                const aptPrice = currentAptPrice || 0;
+
+                // Вывод: Майнинг / В кошельке
+                let balanceHtml = `<span title="В процессе майнинга">${minedMega.toFixed(8).replace('.', ',')} $MEGA</span>`;
+                // balanceHtml += ` <span style="color: #888; font-size: 0.8em; font-weight: normal;"> <p> В кошельке: ${walletMega.toFixed(6).replace('.', ',')} </p></span> $MEGA`;
+                
+
+                // USD считаем от общей суммы (23)
+                if (aptPrice > 0) {
+                    const totalUsd = totalMega * priceInApt * aptPrice;
+                    balanceHtml += formatUsdGreen(totalUsd);
+                }
+                megaBalanceLabel.innerHTML = balanceHtml;
+            }
+
+            // 2. Сразу запускаем локальный расчет награды от новых данных
+            calculateMegaRewardLocally();
+        }
+    } catch (e) {
+        console.error("MEGA Sync Error:", e);
+    }
+    // 3. Обновляем все надписи и таймеры
+    updateMegaLabels();
+    if (typeof updateMegaUnlockTimer === 'function') updateMegaUnlockTimer();
+}
+
+
+function updateMegaUnlockTimer() {
+    const row = document.getElementById('megaUnlockRow');
+    const timerDisplay = document.getElementById('megaUnlockTimer');
+    const timerContainer = document.getElementById('megaUnlockTimerContainer');
+    const confirmBtn = document.getElementById('confirmUnstakeBtn');
+    
+    // Если анстейк не заказан (unlock_time === 0), скрываем весь блок
+    if (!row || !timerDisplay || !confirmBtn || megaUnlockTime === 0n) {
+        if (row) row.style.display = 'none';
+        return;
+    }
+
+    const nowSynced = BigInt(Math.floor(Date.now() / 1000)) + megaNetworkTimeOffset;
+    const timeLeft = megaUnlockTime - nowSynced;
+
+    // Показываем блок, так как вывод заказан
+    row.style.display = 'block';
+
+    if (timeLeft > 0n) {
+        // --- ВРЕМЯ ЕЩЕ ИДЕТ ---
+        timerContainer.style.display = 'block';
+        
+        // Делаем кнопку "мертвой"
+        confirmBtn.disabled = true;
+        confirmBtn.style.backgroundColor = "#cccccc"; // Серый цвет
+        confirmBtn.style.color = "#666666";
+        confirmBtn.style.cursor = "not-allowed";
+        confirmBtn.textContent = "ЗАВЕРШИТЬ ВЫВОД $MEGA";
+
+        // Обновляем цифры таймера
+        const days = timeLeft / 86400n;
+        const hours = (timeLeft % 86400n) / 3600n;
+        const minutes = (timeLeft % 3600n) / 60n;
+        const seconds = timeLeft % 60n;
+        let timeStr = days > 0n ? `${days}д ` : "";
+        timeStr += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        timerDisplay.textContent = timeStr;
+
+    } else {
+        // --- ВРЕМЯ ВЫШЛО! ---
+        timerContainer.style.display = 'none'; // Скрываем текст таймера
+        
+        // Активируем кнопку
+        confirmBtn.disabled = false;
+        confirmBtn.style.backgroundColor = "#FF5722"; // Оранжевый (активный)
+        confirmBtn.style.color = "white";
+        confirmBtn.style.cursor = "pointer";
+        confirmBtn.textContent = "ПОДТВЕРДИТЬ ВЫВОД $MEGA";
+    }
+}
+
+
+function updateMegaLabels() {
+    const rewardLabel = document.getElementById('megaRewardDisplay');
+    const usdLabel = document.getElementById('megaRewardUsd');
+    const priceLabel = document.getElementById('megaCurrentPriceLabel'); // Новый элемент
+    const rateLabel = document.getElementById('megaRateLabel');
+    
+    // Расчет прогресса и цены в APT
+    const START_TIME = 1767623400;
+    const END_TIME = 1795075200;
+    const now = Math.floor(Date.now() / 1000);
+    const progress = Math.max(0, Math.min(1, (now - START_TIME) / (END_TIME - START_TIME)));
+    const priceInApt = 0.001 + (0.1 - 0.001) * progress;
+
+    // 1. Обновляем награду (монеты)
+    if (rewardLabel) {
+        rewardLabel.textContent = formatMeeValue(megaCurrentReward) + " $MEGA";
+    }
+
+    // 2. Обновляем доллары награды (в скобках, зеленым)
+    if (usdLabel && typeof currentAptPrice !== 'undefined' && currentAptPrice > 0) {
+        const rewardNum = Number(megaCurrentReward) / 100000000;
+        const rewardUsd = rewardNum * priceInApt * currentAptPrice;
+        usdLabel.innerHTML = formatUsdGreen(rewardUsd, 8);
+    }
+
+    // 3. ОБНОВЛЯЕМ ТЕКУЩИЙ КУРС (новая строка)
+    if (priceLabel && typeof currentAptPrice !== 'undefined' && currentAptPrice > 0) {
+        const priceInUsd = priceInApt * currentAptPrice;
+        // Выводим: 0,0032 APT ($0,0057)
+        // priceLabel.innerHTML = `${priceInApt.toFixed(6).replace('.', ',')} APT <span style="color: #228B22; font-weight: bold;">($${priceInUsd.toFixed(4)})</span>`;
+    }
+
+    if (rateLabel && megaStakedAmountRaw > 0n) {
+        const rate = (Number(megaStakedAmountRaw) * 15) / (31536000 * 100 * 100000000);
+        rateLabel.textContent = `Доходность: 15% APR (${rate.toFixed(10).replace('.', ',')} $MEGA / сек)`;
+    }
+}
+
+const END_TIME_BIGINT = 1795075200n;
+
+
+function calculateMegaRewardLocally() {
+    // Если стейка нет или мы только что обновились (текущее время == время обновления), награда 0
+    if (megaStakedAmountRaw === 0n || megaLastUpdate === 0n) {
+        megaCurrentReward = 0n;
+        return;
+    }
+
+    const nowSynced = BigInt(Math.floor(Date.now() / 1000)) + megaNetworkTimeOffset;
+    
+    // Проверка на unlock_time > 0 или если время не прошло — reward = 0, как в контракте
+    if (megaUnlockTime > 0n || nowSynced <= megaLastUpdate) {
+        megaCurrentReward = 0n;
+        return;
+    }
+
+    const duration = nowSynced - megaLastUpdate;
+    // Считаем награду ТОЛЬКО за время, прошедшее с момента последнего last_update в блокчейне
+    megaCurrentReward = (megaStakedAmountRaw * MEGA_APY * duration) / (SECONDS_IN_YEAR * 100n);
+}
+
+function startMegaSimulation() {
+    if (window.megaSimInterval) return;
+
+    window.megaSimInterval = setInterval(() => {
+        if (megaStakedAmountRaw > 0n) {
+            calculateMegaRewardLocally();
+            updateMegaLabels();
+            updateMegaUnlockTimer();
+
+            const ticker = document.getElementById('megaRewardTicker');
+            if (ticker) {
+                ticker.textContent =
+                    Math.floor(Date.now() / 500) % 2 === 0 ? '💎' : '✨';
+            }
+        }
+    }, 1000);
+}
+
+function initMegaButtons() {
+    const actions = {
+        'addMegaBtn': `stake_all`,
+        'harvestMegaBtn': `claim_staking_rewards`,
+        'harvest10MegaBtn': `harvest10`, 
+        'harvest100MegaBtn': `harvest100`, 
+        'unstakeMegaBtn': `unstake_request`,
+        'confirmUnstakeBtn': `unstake_confirm`,
+        'cancelUnstakeMegaBtn': `cancel_unstake`
+    };
+
+    Object.entries(actions).forEach(([id, funcName]) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(MEGA_COIN_TYPE);
+                window.open(`https://explorer.aptoslabs.com/account/${MEGA_POOL_ADDRESS}/modules/run/mega_coin/${funcName}?network=mainnet`, '_blank');
+            });
+        }
+    });
+}
+
+// Запуск
+initMegaButtons();
+startMegaSimulation();
+setInterval(runMegaUpdateCycle, 20000);
+setTimeout(runMegaUpdateCycle, 500);
