@@ -1,23 +1,30 @@
 {
-    "manifest_version": 3,
-    "name": "MEE MEGA Aptos Staking Monitor",
-    "version": "1.0.5",
-    "description": "Монитор стейкинга $MEE на Aptos. Отображает баланс и награду в реальном времени.",
-    "permissions": ["storage"],
-    
-    "action": {
-        "default_popup": "popup.html",
-        "default_title": "MEE MEGA Aptos Staking Monitor",
-        "default_icon": {
-            "16": "icons/icon16.png",
-            "48": "icons/icon48.png",
-            "128": "icons/icon128.png"
-        }
-    },
-    
-    "icons": {
-        "16": "icons/icon16.png",
-        "48": "icons/icon48.png",
-        "128": "icons/icon128.png"
-    }
+"manifest_version": 3,
+"name": "MEE Aptos Staking Monitor",
+"version": "1.0.6",
+"description": "Монитор стейкинга $MEE на Aptos. Отображает баланс и награду в реальном времени.",
+"permissions": ["storage"],
+"host_permissions": [
+"https://api.coingecko.com/",
+"https://api.dexscreener.com/",
+"https://fullnode.mainnet.aptoslabs.com/",
+"https://api.github.com/"
+],
+"content_security_policy": {
+"extension_pages": "script-src 'self'; object-src 'self';"
+},
+"action": {
+"default_popup": "popup.html",
+"default_title": "MEE Aptos Staking Monitor",
+"default_icon": {
+"16": "icons/icon16.png",
+"48": "icons/icon48.png",
+"128": "icons/icon128.png"
+}
+},
+"icons": {
+"16": "icons/icon16.png",
+"48": "icons/icon48.png",
+"128": "icons/icon128.png"
+}
 }
