@@ -195,7 +195,7 @@
 </head>
 <body>
     
-    <h1 class="title-header">МАЙНИНГ МОНЕТЫ $MEE (APTOS)</h1>
+    <h1 class="title-header">МАЙНИНГ МОНЕТЫ $MEE $MEGA (APTOS)</h1>
     
     <div id="mainContent">
         <div class="section">
@@ -236,12 +236,12 @@
 
 <div class="section" style="background-color: #e6f7ff; border-color: #8ac0e6; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
     <div style="flex-grow: 1;">
-        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Баланс $MEE:</label>
+        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Баланс майнинга $MEE:</label>
         <span id="meeBalance" style="font-size: 1.1em;">0,00000000 $MEE</span>
     </div>
     <div style="display: flex; flex-direction: row; gap: 8px; flex-shrink: 0;">
         <button id="addMeeBtn" style="background-color: #1E90FF; color: white; padding: 8px 12px; margin: 0; font-size: 0.85em; font-weight: bold;">Добавить $MEE</button>
-        <button id="unstakeBtn" style="background-color: #DC143C; color: white; padding: 8px 12px; margin: 0; font-size: 0.85em; font-weight: bold;">x</button>
+        <button id="unstakeBtn" style="background-color: #DC143C; color: white; padding: 8px 12px; margin: 0; font-size: 0.85em; font-weight: bold;">Забрать $MEE</button>
     </div>
 </div>
 
@@ -249,8 +249,8 @@
         <div class="section" style="background-color: #e6ffe6; border-color: #00cc00; display: flex; align-items: center; justify-content: space-between;">
             <div style="flex-grow: 1;">
                 <label style="display: block; font-weight: bold; margin-bottom: 5px;">
-                    Награда (harvest): 
-                    <span id="rewardTicker" style="margin-left: 5px; font-size: 0.9em; color: darkgreen;">[Загрузка]</span>
+                    Награда майнинга $MEE: 
+                  <!---  <span id="rewardTicker" style="margin-left: 5px; font-size: 0.9em; color: darkgreen;">[Загрузка]</span> -->
                 </label>
                 <span id="meeReward">0,00000000 $MEE</span>
                 <span id="meeRateLabel" style="display: block; font-size: 0.8em; color: #666; margin-top: 5px;">Скорость: 0.00 MEE/сек</span>
@@ -273,6 +273,84 @@
         <div class="section" style="padding: 0; border: none; cursor: pointer;" id="gtaBannerBtn">
             <img src="icons/GTA.gif" alt="Get GTA" style="width: 100%; border-radius: 5px; display: block;">
         </div>
+
+<div class="section" style="background-color: #e6f7ff; border-color: #8ac0e6; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+    <div style="flex-grow: 1;">
+        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Баланс майнинга $MEGA:</label>
+        <span id="megaBalance" style="font-size: 1.1em;">0,00000000 $MEGA</span>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 8px; flex-shrink: 0; align-items: center;">
+        <button id="addMegaBtn" style="background-color: #1E90FF; color: white; padding: 8px 12px; margin: 0; font-size: 0.85em; font-weight: bold;">Добавить $MEGA</button>
+        
+        <button id="megaMiningInfoBtn" class="info-btn" style="margin: 0; width: 25px; height: 25px;">?</button>
+        
+        <button id="unstakeMegaBtn" style="background-color: #DC143C; color: white; padding: 8px 12px; margin: 0; font-size: 0.85em; font-weight: bold;">Забрать $MEGA</button>
+    </div>
+</div>
+
+
+
+<div class="section" style="background-color: #f0fff0; border-color: #2E8B57; display: flex; align-items: center; justify-content: space-between;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column;">
+        <label style="display: block; font-weight: bold; margin-bottom: 2px;">
+            Награда майнинга $MEGA:
+          <!---  <span id="megaRewardTicker" style="margin-left: 5px; font-size: 0.9em;">💎</span> -->
+        </label>
+
+        <div style="display: flex; align-items: baseline; gap: 5px;">
+            <span id="megaRewardDisplay" style="font-weight: bold; color: green; font-size: 1.4em;">0,00000000 $MEGA</span>
+            <span id="megaRewardUsd"></span> 
+        </div>
+
+        <div id="megaPriceRow" style="font-size: 0.85em; color: #555; margin-top: 2px;">
+         <!--   Курс: <span id="megaCurrentPriceLabel">0,0000...</span> -->
+        </div>
+     
+<div id="megaUnlockRow" style="display: none; font-size: 0.85em; margin-top: 10px; border-top: 1px dashed #E91E63; padding-top: 8px;">
+    <p id="megaUnlockTimerContainer" style="color: #E91E63; font-weight: bold; margin: 0 0 5px 0;">
+        🔓 Разблокировка: <span id="megaUnlockTimer">00:00:00</span>
+    </p>
+    
+    <button id="confirmUnstakeBtn" disabled style="background-color: #cccccc; color: #666666; width: 100%; font-weight: bold; border: none; padding: 10px; border-radius: 5px; cursor: not-allowed; transition: all 0.3s ease;">
+        ЗАВЕРШИТЬ ВЫВОД $MEGA
+    </button>
+
+    <button id="cancelUnstakeMegaBtn" style="background-color: #2196F3; color: white; width: 100%; margin-top: 8px; font-weight: bold; border: none; padding: 10px; border-radius: 5px; cursor: pointer;">
+        ОТМЕНИТЬ ВЫВОД
+    </button>
+</div>
+
+
+<!--
+
+        <div id="megaUnlockRow" style="display: none; font-size: 0.85em; margin-top: 10px; border-top: 1px dashed #E91E63; padding-top: 8px;">
+    <p id="megaUnlockTimerContainer" style="color: #E91E63; font-weight: bold; margin: 0 0 5px 0;">
+        🔓 Разблокировка: <span id="megaUnlockTimer">00:00:00</span>
+    </p>
+    
+    <button id="confirmUnstakeBtn" disabled style="background-color: #cccccc; color: #666666; width: 100%; font-weight: bold; border: none; padding: 10px; border-radius: 5px; cursor: not-allowed; transition: all 0.3s ease;">
+        ЗАВЕРШИТЬ ВЫВОД $MEGA
+    </button>
+</div>
+
+-->
+
+
+
+        <span id="megaRateLabel" style="display: block; font-size: 0.8em; color: #666; margin-top: 5px;">Скорость: 0.00 MEGA/сек</span>
+    </div>
+
+   <button id="harvestMegaBtn" style="background-color: #4CAF50; color: white; width: 120px; margin-left: 10px; flex-shrink: 0; font-weight: bold;">Забрать награду</button> 
+
+
+
+
+</div>
+
+
+
+
+
 
         <div class="section" style="margin-top: 5px; padding: 5px; border: none;">
             <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
@@ -299,7 +377,6 @@
             </span>
         </div>
 
-        
         <button id="saveNewWalletBtn">Сохранить</button>
         <button id="cancelNewWalletBtn" style="background-color: #ccc;">Отмена</button>
     </div>
@@ -399,7 +476,11 @@
             <p style="margin-top: 15px;">
                 4. В поле <span style="font-weight: bold; color: #DC143C;">"arg1: u8"</span> введите тип вывода:
                 <ul style="margin: 5px 0 0 20px;">
-                    <li><span style="font-weight: bold; color: green;">0</span>: Обычный Unstake (15 дней разблокировки, затем `withdraw`).</li>
+                    <li><span style="font-weight: bold; color: green;">0</span>: Обычный Unstake (15 дней разблокировки, затем `<a href="https://explorer.aptoslabs.com/account/0x514cfb77665f99a2e4c65a5614039c66d13e00e98daf4c86305651d29fd953e5/modules/run/Staking/withdraw?network=mainnet" 
+       target="_blank" 
+       style="color: #2196F3; text-decoration: underline;">
+       withdraw
+    </a>`).</li>
                     <li><span style="font-weight: bold; color: red;">1</span>: Мгновенный Unstake (комиссия 15%).</li>
                 </ul>
             </p>
@@ -407,6 +488,8 @@
             <p style="margin-top: 15px; font-weight: bold;">
                 5. Нажмите <span style="background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; font-family: monospace; color: #333;">EXECUTE</span> и подпишите транзакцию.
             </p>
+
+            <p>* Если передумали Unstake, хотите снова майнить, жмите <a href="https://explorer.aptoslabs.com/account/0x514cfb77665f99a2e4c65a5614039c66d13e00e98daf4c86305651d29fd953e5/modules/run/Staking/cancel_unstake?network=mainnet">cancel_unstake</a></p>
             
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button id="closeUnstakeModalBtn" style="flex-grow: 1; padding: 10px; background-color: #DC143C; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
@@ -421,7 +504,7 @@
 
 <div class="section" style="margin-top: 15px; padding: 5px; border: none; text-align: center;">
     <span style="font-size: 0.8em; color: #888;">
-        Версия V<span id="currentVersion">1.0.5</span> | 
+        Версия V<span id="currentVersion">1.0.6</span> | 
         <button id="checkVersionBtn" style="background: none; border: none; padding: 0; margin: 0; color: #1E90FF; text-decoration: underline; cursor: pointer; font-size: 1em; font-weight: normal;">
             Проверить последнюю версию
         </button>
@@ -431,7 +514,7 @@
 <div id="updateModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 2000;">
     <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 350px; text-align: center;">
         <h3 id="updateModalHeader" style="margin-top: 0; color: #4CAF50;">✅ У вас последняя версия!</h3>
-        <p id="updateModalText" style="font-size: 1.1em;">Текущая версия: V1.0.5</p>
+        <p id="updateModalText" style="font-size: 1.1em;">Текущая версия: V1.0.6</p>
         <div id="updateModalActions" style="display: none; flex-direction: column; gap: 10px; margin-top: 20px;">
             <button id="downloadUpdateBtn" style="padding: 10px; background-color: #1E90FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
                 Скачать V<span id="newVersionTag"></span>
@@ -590,9 +673,19 @@
 
 
         <div style="display: flex; gap: 10px;">
+
             <button id="proceedGtaBtn" style="flex-grow: 2; padding: 12px; background: #E91E63; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">
-                ЗАБРАТЬ $MEGA
+                ЗАБРАТЬ 1 $MEGA
             </button>
+
+             <div style="display: flex; flex-direction: column; gap: 5px; margin-left: 10px; flex-shrink: 0;">
+    
+    <button id="harvest10MegaBtn" style="background-color: #2E8B57; color: white; width: 130px; font-size: 0.85em; margin: 0; padding: 5px;">Забрать 10 $MEGA</button>
+    <button id="harvest100MegaBtn" style="background-color: #2E8B57; color: white; width: 130px; font-size: 0.85em; margin: 0; padding: 5px;">Забрать 100 $MEGA</button>
+</div>
+
+
+
             <button id="cancelGtaBtn" style="flex-grow: 1; padding: 10px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer;">
                 Отмена
             </button>
@@ -602,5 +695,30 @@
 
 
     <script src="popup.js"></script>
+
+<div id="megaMiningInfoModal" class="modal-overlay" style="z-index: 2000;">
+    <div class="modal">
+        <h3 style="color: #1E90FF; margin-top: 0;">Как работает майнинг?</h3>
+    
+        <ul style="padding-left: 20px; line-height: 1.6;">
+            <p>1. <strong>Добавить $MEGA</strong><br>
+    Нажимай "Добавить $MEGA" — твои монеты уходят в майнинг-пул.<br>
+    С этого момента они начинают приносить тебе доход 15% в год.</p>
+    
+    <p>2. <strong>Доход капает автоматически</strong><br>
+    Ты видишь, сколько уже намайнил — это растёт каждую секунду.<br>
+    Чем дольше монеты в пуле — тем больше доход.</p>
+    
+    <p>3. <strong>Забрать награду</strong><br>
+    Нажимай "Забрать награду" → сначала забираешь только начисленный доход.<br>
+    Основные монеты остаются в майнинге.</p>
+    
+    <p>4. <strong>Вывести всё - Забрать $MEGA</strong><br>
+    
+    <p>Вывод занимает 15 дней. Награда не начисляется. </p>
+        </ul>
+        <button id="closeMegaInfo" style="width: 100%; background-color: #1E90FF; color: white; font-weight: bold; margin-top: 10px;">Понятно!</button>
+    </div>
+</div>    
 </body>
 </html>
