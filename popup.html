@@ -220,7 +220,10 @@
 </div>
 
 
-            <button id="editWalletBtn">Сменить кошелек</button>
+            <div style="display:flex; gap:8px;">
+                <button id="editWalletBtn" style="flex:1;">Сменить кошелек</button>
+                <button id="exchangeBtn" style="flex:1; background-color:#FF8C00; color:white; font-weight:bold; border-color:#e07000;">🏪 Биржа</button>
+            </div>
         </div>
         
         <!--
@@ -233,6 +236,35 @@
             <button id="addMeeBtn" style="background-color: #1E90FF; color: white; width: 120px; margin: 0; flex-shrink: 0;">Добавить $MEE</button>
         </div>
     -->
+
+<div id="exchangePanel" style="display:none; margin-bottom:10px;">
+    <div style="border:2px solid #FF8C00; border-radius:8px; padding:10px; background:#fff8f0;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+            <h3 style="margin:0; color:#e07000; font-size:1em;">🏪 Биржа заданий MEGA
+
+            <p style="text-align: center; margin: 6px 0 18px 0; font-size: 0.92em;">
+            <a href="https://github.com/pavekscb/m/releases" 
+               target="_blank" 
+               style="color: #FF9800; text-decoration: underline; font-weight: bold;">
+                (работает в мобильной версии)
+            </a>
+        </p>
+         </h3>
+
+
+            <div style="display:flex; gap:5px;">
+                <button id="refreshExchangeBtn" style="padding:3px 8px; font-size:0.8em; background:#FF8C00; color:white; border:none; border-radius:4px; cursor:pointer;">🔄</button>
+                <button id="closeExchangeBtn" style="padding:3px 8px; font-size:0.8em; background:#ccc; color:#333; border:none; border-radius:4px; cursor:pointer;">✕</button>
+            </div>
+        </div>
+        <div id="exchangeStats" style="font-size:0.75em; margin-bottom:7px; padding:4px 6px; background:#fff3e0; border-radius:4px; border:1px solid #ffe0b2;">
+            <span style="color:#888;">Загрузка статистики...</span>
+        </div>
+        <div id="exchangeTaskList" style="max-height:310px; overflow-y:auto;">
+            <p style="text-align:center; color:#888;">Нажмите 🔄 для загрузки</p>
+        </div>
+    </div>
+</div>
 
 <div class="section" style="background-color: #e6f7ff; border-color: #8ac0e6; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
     <div style="flex-grow: 1;">
@@ -504,7 +536,7 @@
 
 <div class="section" style="margin-top: 15px; padding: 5px; border: none; text-align: center;">
     <span style="font-size: 0.8em; color: #888;">
-        Версия V<span id="currentVersion">1.0.6</span> | 
+        Версия V<span id="currentVersion">1.0.7</span> | 
         <button id="checkVersionBtn" style="background: none; border: none; padding: 0; margin: 0; color: #1E90FF; text-decoration: underline; cursor: pointer; font-size: 1em; font-weight: normal;">
             Проверить последнюю версию
         </button>
@@ -514,7 +546,7 @@
 <div id="updateModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 2000;">
     <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 350px; text-align: center;">
         <h3 id="updateModalHeader" style="margin-top: 0; color: #4CAF50;">✅ У вас последняя версия!</h3>
-        <p id="updateModalText" style="font-size: 1.1em;">Текущая версия: V1.0.6</p>
+        <p id="updateModalText" style="font-size: 1.1em;">Текущая версия: V1.0.7</p>
         <div id="updateModalActions" style="display: none; flex-direction: column; gap: 10px; margin-top: 20px;">
             <button id="downloadUpdateBtn" style="padding: 10px; background-color: #1E90FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
                 Скачать V<span id="newVersionTag"></span>
