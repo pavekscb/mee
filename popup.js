@@ -20,7 +20,7 @@ const APTOS_LEDGER_URL = "https://fullnode.mainnet.aptoslabs.com/v1";
 
 const URL_SOURCE = "https://github.com/pavekscb/mee";
 const URL_SITE = "https://meeiro.xyz/staking";
-const URL_GRAPH = "https://dexscreener.com/aptos/pcs-167";
+const URL_GRAPH = "https://www.geckoterminal.com/aptos/pools/899cb684-bdcb-47a6-a6c9-f2b631bba93a";
 const URL_SWAP = "https://aptos.pancakeswap.finance/swap?outputCurrency=0x1%3A%3Aaptos_coin%3A%3AAptosCoin&inputCurrency=0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9%3A%3Amee_coin%3A%3AMeeCoin";
 const URL_SWAP_EARNIUM = "https://app.panora.exchange/?ref=V94RDWEH#/swap/aptos?pair=MEE-APT";
 
@@ -125,25 +125,42 @@ async function fetchAptPrice() {
     }
 }
 
-// ================ курс mee
+// ================ курс mee (через on-chain пул PancakeSwap, как в main.dart)
+const MEE_POOL_RESOURCE_URL = "https://fullnode.mainnet.aptoslabs.com/v1/accounts/0xc7efb4076dbe143cbcd98cfaaa929ecfc8f299203dfff63b95ccb6bfe19850fa/resource/" +
+    encodeURIComponent("0xc7efb4076dbe143cbcd98cfaaa929ecfc8f299203dfff63b95ccb6bfe19850fa::swap::TokenPairMetadata<0x1::aptos_coin::AptosCoin,0xe9c192ff55cffab3963c695cff6dbf9dad6aff2bb5ac19a6415cad26a81860d9::mee_coin::MeeCoin>");
+
 async function fetchMeePrice() {
     try {
-        const res = await fetch("https://api.dexscreener.com/latest/dex/pairs/aptos/pcs-167");
+        const res = await fetch(MEE_POOL_RESOURCE_URL);
+        if (!res.ok) throw new Error("Pool fetch failed: " + res.status);
         const data = await res.json();
-        return parseFloat(data.pair.priceUsd);
+        const poolData = data.data;
+        // balance_x = APT (8 decimals), balance_y = MEE (6 decimals) — точно как в main.dart
+        const aptReserveRaw = parseFloat(poolData.balance_x.value);
+        const meeReserveRaw = parseFloat(poolData.balance_y.value);
+        const aptReserve = aptReserveRaw / 1e8;   // APT decimals = 8
+        const meeReserve = meeReserveRaw / 1e6;   // MEE decimals = 6
+        if (meeReserve <= 0 || aptReserve <= 0) throw new Error("Zero reserve");
+        // Цена MEE в APT = APT_reserve / MEE_reserve (как в main.dart: priceMeeInApt)
+        const priceMeeInApt = aptReserve / meeReserve;
+        // Цена MEE в USD = priceMeeInApt * priceApt
+        const aptPrice = aptUsdPrice || currentAptPrice;
+        if (!aptPrice) return null;
+        return priceMeeInApt * aptPrice;
     } catch (e) {
-        console.error("MEE price error", e);
+        console.error("MEE price error (pool)", e);
         return null;
     }
 }
 
-//======== обновление цен
+//======== обновление цен (сначала APT, потом MEE — т.к. MEE зависит от aptUsdPrice)
 async function updateTokenPrices() {
-    const [aptPrice, meePrice] = await Promise.all([
-        fetchAptPrice(),
-        fetchMeePrice()
-    ]);
-    if (aptPrice !== null) aptUsdPrice = aptPrice;
+    const aptPrice = await fetchAptPrice();
+    if (aptPrice !== null) {
+        aptUsdPrice = aptPrice;
+        currentAptPrice = aptPrice;
+    }
+    const meePrice = await fetchMeePrice();
     if (meePrice !== null) meeUsdPrice = meePrice;
     renderWalletLines();
 }
@@ -957,3 +974,194 @@ initMegaButtons();
 startMegaSimulation();
 setInterval(runMegaUpdateCycle, 20000);
 setTimeout(runMegaUpdateCycle, 500);
+
+
+// ==========================================
+// === БИРЖА ЗАДАНИЙ MEGA (только просмотр) ===
+// ==========================================
+
+const EXCHANGE_CONTRACT = "0x350f1f65a2559ad37f95b8ba7c64a97c23118856ed960335fce4cd222d5577d3";
+const APTOS_VIEW_URL = "https://fullnode.mainnet.aptoslabs.com/v1/view";
+
+// Превращает текст с URL в HTML с кликабельными ссылками (открываются в новой вкладке)
+function linkifyText(text) {
+    const urlRegex = /(https?:\/\/[^\s<>"']+)/g;
+    return text.replace(urlRegex, (url) => {
+        // Обрезаем трейлинг пунктуацию
+        let clean = url.replace(/[.,!?)]+$/, '');
+        const trail = url.slice(clean.length);
+        const short = clean.length > 40 ? clean.slice(0, 37) + '...' : clean;
+        return `<a href="${clean}" target="_blank" rel="noopener noreferrer"
+            style="color:#1565C0; word-break:break-all; font-size:0.85em;"
+            onclick="event.stopPropagation(); chrome.tabs.create({url:'${clean}'}); event.preventDefault();"
+            >${short}</a>${trail}`;
+    });
+}
+
+async function fetchExchangeTasks() {
+    const list = document.getElementById('exchangeTaskList');
+    const statsEl = document.getElementById('exchangeStats');
+    if (!list) return;
+
+    list.innerHTML = '<p style="text-align:center; color:#888;">⏳ Загрузка заданий...</p>';
+    if (statsEl) statsEl.textContent = '';
+
+    try {
+        const [resV2, resStatusV2, resV3] = await Promise.all([
+            fetch(APTOS_VIEW_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ function: `${EXCHANGE_CONTRACT}::mega_tasks::get_all_tasks_v2`, type_arguments: [], arguments: [] })
+            }),
+            fetch(APTOS_VIEW_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ function: `${EXCHANGE_CONTRACT}::mega_tasks::get_all_task_statuses`, type_arguments: [], arguments: [] })
+            }),
+            fetch(APTOS_VIEW_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ function: `${EXCHANGE_CONTRACT}::mega_tasks::get_all_tasks_v3`, type_arguments: [], arguments: [] })
+            })
+        ]);
+
+        const dataV2 = resV2.ok ? await resV2.json() : [[]];
+        const dataStatusV2 = resStatusV2.ok ? await resStatusV2.json() : [[]];
+        const dataV3 = resV3.ok ? await resV3.json() : [[]];
+
+        const rawV2 = (dataV2[0]) || [];
+        const rawStatuses = (dataStatusV2[0]) || [];
+        const rawV3 = (dataV3[0]) || [];
+
+        // Парсим статусы V2
+        let statusList = [];
+        if (typeof rawStatuses === 'string') {
+            const hexStr = rawStatuses.startsWith('0x') ? rawStatuses.slice(2) : rawStatuses;
+            for (let i = 0; i < hexStr.length; i += 2) statusList.push(parseInt(hexStr.slice(i, i+2), 16));
+        } else if (Array.isArray(rawStatuses)) {
+            statusList = rawStatuses.map(Number);
+        }
+
+        const allTasks = [];
+        let totalPoolApt = 0;
+
+        // V2 задания
+        rawV2.forEach((task, i) => {
+            const status = (i < statusList.length) ? statusList[i] : 0;
+            const rewardApt = parseInt(task.reward_per_claim_apt || 0) / 1e8;
+            const remaining = parseInt(task.remaining_claims || 0);
+            // Считаем весь пул APT (все задания, не только активные)
+            totalPoolApt += rewardApt * remaining;
+            if (status === 1) {
+                allTasks.push({
+                    id: task.id,
+                    description: task.description || '',
+                    reward: rewardApt.toFixed(4),
+                    remaining,
+                    total: parseInt(task.total_claims || 0),
+                    expires: parseInt(task.expires_at || 0),
+                    version: 'v2',
+                    status
+                });
+            }
+        });
+
+        // V3 задания — получаем статусы
+        for (const raw of rawV3) {
+            let taskStatus = 0;
+            try {
+                const sr = await fetch(APTOS_VIEW_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ function: `${EXCHANGE_CONTRACT}::mega_tasks::get_task_status`, type_arguments: [], arguments: [raw.id.toString()] })
+                });
+                if (sr.ok) { const sd = await sr.json(); taskStatus = (sd[0]) || 0; }
+            } catch(e) {}
+
+            const rewardApt = parseInt(raw.reward_per_claim_apt || 0) / 1e8;
+            const remaining = parseInt(raw.remaining_claims || 0);
+            totalPoolApt += rewardApt * remaining;
+
+            if (taskStatus === 1) {
+                allTasks.push({
+                    id: raw.id,
+                    description: raw.description || '',
+                    reward: rewardApt.toFixed(4),
+                    remaining,
+                    total: parseInt(raw.total_claims || 0),
+                    expires: parseInt(raw.expires_at || 0),
+                    version: 'v3',
+                    status: taskStatus
+                });
+            }
+        }
+
+        // Сортировка: новые сверху
+        allTasks.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+
+        // Статистика пула
+        if (statsEl) {
+            const activeCount = allTasks.length;
+            const totalCount = rawV2.length + rawV3.length;
+            statsEl.innerHTML = `<span style="color:#555;">Всего заданий: <b>${totalCount}</b> &nbsp;|&nbsp; Активных: <b style="color:#2E7D32">${activeCount}</b> &nbsp;|&nbsp; Пул: <b style="color:#e07000">${totalPoolApt.toFixed(4)} APT</b></span>`;
+        }
+
+        if (allTasks.length === 0) {
+            list.innerHTML = '<p style="text-align:center; color:#888; padding: 20px;">📭 Нет активных заданий</p>';
+            return;
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        list.innerHTML = allTasks.map(task => {
+            const expired = task.expires > 0 && now > task.expires;
+            const noSlots = task.remaining === 0;
+            const inactive = expired || noSlots;
+            const expDate = task.expires > 0 ? new Date(task.expires * 1000).toLocaleDateString('ru-RU') : '∞';
+            const aptStr = parseFloat(task.reward) > 0 ? `💰 ${task.reward} APT` : '';
+            const bgColor = inactive ? '#f5f5f5' : '#f0fff0';
+            const borderColor = inactive ? '#ddd' : '#4CAF50';
+            const descHtml = linkifyText(task.description);
+            return `
+            <div style="border:1px solid ${borderColor}; border-radius:6px; padding:10px; margin-bottom:10px; background:${bgColor}; opacity:${inactive ? 0.65 : 1}">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-size:0.8em; color:#888;">#${task.id} · ${task.version.toUpperCase()}</span>
+                    <span style="font-size:0.95em; font-weight:bold; color:#2E7D32;">${aptStr}</span>
+                </div>
+                <div style="margin:0 0 7px 0; font-size:0.97em; line-height:1.6; word-break:break-word;">${descHtml}</div>
+                <div style="font-size:0.82em; color:#555; display:flex; justify-content:space-between; margin-top:5px;">
+                    <span>Мест: <b>${task.remaining}/${task.total}</b></span>
+                    <span>До: ${expDate}</span>
+                </div>
+                ${inactive ? `<div style="font-size:0.82em; color:#c62828; margin-top:4px; font-weight:bold;">${expired ? '⏰ Срок истёк' : '🚫 Мест нет'}</div>` : ''}
+            </div>`;
+        }).join('');
+
+    } catch(e) {
+        console.error('Exchange fetch error', e);
+        list.innerHTML = '<p style="text-align:center; color:red; padding: 20px;">❌ Ошибка загрузки заданий</p>';
+    }
+}
+
+// Инициализация кнопки Биржа
+document.addEventListener('DOMContentLoaded', () => {
+    const exchangeBtn = document.getElementById('exchangeBtn');
+    const exchangePanel = document.getElementById('exchangePanel');
+    const closeExchangeBtn = document.getElementById('closeExchangeBtn');
+    const refreshExchangeBtn = document.getElementById('refreshExchangeBtn');
+
+    if (exchangeBtn && exchangePanel) {
+        exchangeBtn.addEventListener('click', () => {
+            const isVisible = exchangePanel.style.display !== 'none';
+            exchangePanel.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) fetchExchangeTasks();
+        });
+    }
+    if (closeExchangeBtn) {
+        closeExchangeBtn.addEventListener('click', () => {
+            if (exchangePanel) exchangePanel.style.display = 'none';
+        });
+    }
+    if (refreshExchangeBtn) {
+        refreshExchangeBtn.addEventListener('click', fetchExchangeTasks);
+    }
+});
